@@ -34,7 +34,9 @@ import {
   ASU_BUILDINGS,
   decodeAsuClassroom,
   estimateWalkingMinutesToBuilding,
+  findCourseTimeConflict,
   isInsideAsuCampus,
+  parseTimeToMinutes,
 } from '@/lib/asu-campus';
 
 export type ActiveView =
@@ -100,7 +102,8 @@ interface StoreContextType {
 
   // Courses & Schedule (with auto-purge of expired quizzes/assignments)
   courses: Course[];
-  addCourse: (course: Course) => Promise<void>;
+  addCourse: (course: Course) => Promise<{ ok: boolean; error?: string }>;
+  updateCourse: (courseId: string, updatedCourse: Course) => Promise<{ ok: boolean; error?: string }>;
   deleteCourse: (courseId: string) => Promise<void>;
   schedule: ScheduleItem[];
   addScheduleItem: (item: ScheduleItem) => Promise<void>;
@@ -194,9 +197,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [currentAdmin, setCurrentAdmin] = useState<Administrator | null>(null);
   const [adminAccounts, setAdminAccounts] = useState<AdminAccount[]>(INITIAL_ADMIN_ACCOUNTS);
 
-  // Academic Data
-  const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
-  const [schedule, setSchedule] = useState<ScheduleItem[]>(INITIAL_SCHEDULE);
+  // Academic Data (isolated per student; never leak demo courses to other accounts)
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
   const [courseRecommendations, setCourseRecommendations] = useState<CourseRecommendationGroup[]>([]);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
 
@@ -222,6 +225,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     permissionStatus: 'default',
   });
   const firedAlertsRef = useRef<Set<string>>(new Set());
+  const lastFetchedCoursesKeyRef = useRef<string>('');
 
   // Network Status (Real browser online/offline detection)
   const [isOffline, setIsOffline] = useState<boolean>(false);
@@ -246,9 +250,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.lang = 'en';
   }, [language]);
 
-  // Persist Offline Cache to localStorage whenever student/courses/schedule change
+  // Persist Offline & Per-Student Cache to localStorage whenever authenticated student's courses/schedule/recommendations change
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !isAuthenticated || !student.studentId) return;
     try {
       const cachePayload = {
         student,
@@ -257,10 +261,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         updatedAt: new Date().toISOString(),
       };
       localStorage.setItem(CACHE_KEY, JSON.stringify(cachePayload));
+      localStorage.setItem(
+        `campusx_student_data_${student.studentId}`,
+        JSON.stringify({
+          courses,
+          schedule,
+          courseRecommendations,
+          updatedAt: cachePayload.updatedAt,
+        })
+      );
     } catch {
       // ignore storage quota errors
     }
-  }, [student, courses, schedule]);
+  }, [isAuthenticated, student, courses, schedule, courseRecommendations]);
 
   // Real Online / Offline Listener (automatic switch when internet disconnects)
   useEffect(() => {
@@ -328,21 +341,40 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Restore cached student & admin session
+      // Restore cached student & admin session (always restore student's own courses on reload)
       try {
-        const rawCache = localStorage.getItem(CACHE_KEY);
-        if (rawCache && !navigator.onLine) {
-          const parsed = JSON.parse(rawCache);
-          if (parsed.student) setStudent(parsed.student);
-          if (parsed.courses) setCourses(parsed.courses);
-          if (parsed.schedule) setSchedule(parsed.schedule);
-        }
-
         const savedSession = localStorage.getItem(SESSION_KEY);
         if (savedSession) {
           const parsedStudent: Student = JSON.parse(savedSession);
           setStudent(parsedStudent);
           setIsAuthenticated(true);
+
+          const perStudentRaw = localStorage.getItem(`campusx_student_data_${parsedStudent.studentId}`);
+          if (perStudentRaw) {
+            const perData = JSON.parse(perStudentRaw);
+            const restoredCourses: Course[] = Array.isArray(perData.courses) ? perData.courses : [];
+            setCourses(restoredCourses);
+            if (Array.isArray(perData.schedule)) setSchedule(perData.schedule);
+            if (Array.isArray(perData.courseRecommendations) && perData.courseRecommendations.length > 0) {
+              setCourseRecommendations(perData.courseRecommendations);
+              lastFetchedCoursesKeyRef.current = restoredCourses
+                .map((c) => c.courseName.trim().toLowerCase())
+                .sort()
+                .join('|');
+            }
+          } else if (parsedStudent.studentId === INITIAL_STUDENT.studentId) {
+            setCourses(INITIAL_COURSES);
+            setSchedule(INITIAL_SCHEDULE);
+          } else {
+            const rawCache = localStorage.getItem(CACHE_KEY);
+            if (rawCache) {
+              const parsed = JSON.parse(rawCache);
+              if (parsed.student?.studentId === parsedStudent.studentId) {
+                if (Array.isArray(parsed.courses)) setCourses(parsed.courses);
+                if (Array.isArray(parsed.schedule)) setSchedule(parsed.schedule);
+              }
+            }
+          }
         }
 
         const savedAdmin = localStorage.getItem(ADMIN_SESSION_KEY);
@@ -477,10 +509,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           if (crsRes.data && crsRes.data.length > 0) {
             const loadedCourses: Course[] = crsRes.data.map((r: Record<string, any>) => ({
               courseId: r.id,
-              courseCode: r.course_code,
+              courseCode: r.course_code || '',
               courseName: r.course_name,
               creditHours: r.credit_hours || 3,
-              instructorName: r.instructor_name || 'ASU Faculty',
+              instructorName: r.instructor_name || '',
               instructorEmail: '',
               classroom: r.classroom,
               building: r.building,
@@ -592,9 +624,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
         courses.forEach((course) => {
           if (!course.days.includes(todayCode) && course.days.length > 0) return;
-          const [hh, mm] = course.startTime.split(':').map(Number);
-          if (Number.isNaN(hh) || Number.isNaN(mm)) return;
-          const lectureMinutes = hh * 60 + mm;
+          const lectureMinutes = parseTimeToMinutes(course.startTime);
+          if (lectureMinutes < 0) return;
           const diffMins = lectureMinutes - currentMinutesOfDay;
 
           if (diffMins > 0 && diffMins <= 15) {
@@ -614,7 +645,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
                 : 'ON TIME';
             sendPush(
               `walk_${course.courseId}_${now.toDateString()}`,
-              `Next Class ${course.courseCode} in ${diffMins} mins`,
+              `Next Class: ${course.courseCode || course.courseName} in ${diffMins} mins`,
               `Room ${course.classroom} (${decoded.buildingNameEn}). Walk ~${walkInfo.minutes}m — Status: ${statusText}`,
               'campus'
             );
@@ -663,14 +694,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     language,
   ]);
 
-  // AI External Course Recommendations fetcher
+  // AI External Course Recommendations fetcher (strictly bound to student's enrolled courses)
   const refreshCourseRecommendations = useCallback(
     async (coursesOverride?: Course[]) => {
       const targetCourses = coursesOverride || courses;
       if (!targetCourses || targetCourses.length === 0) {
+        lastFetchedCoursesKeyRef.current = '';
         setCourseRecommendations([]);
         return;
       }
+
+      const coursesKey = targetCourses
+        .map((c) => c.courseName.trim().toLowerCase())
+        .sort()
+        .join('|');
+      lastFetchedCoursesKeyRef.current = coursesKey;
 
       setIsLoadingRecommendations(true);
       try {
@@ -683,12 +721,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
               courseName: c.courseName,
               syllabus: c.syllabus,
             })),
-            language,
           }),
         });
         const data = await res.json();
-        if (data?.recommendations) {
-          setCourseRecommendations(data.recommendations);
+        if (Array.isArray(data?.recommendations)) {
+          const allowedNames = new Set(
+            targetCourses.map((c) => c.courseName.trim().toLowerCase())
+          );
+          setCourseRecommendations(
+            data.recommendations.filter((g: CourseRecommendationGroup) =>
+              allowedNames.has((g.courseName || '').trim().toLowerCase())
+            )
+          );
         }
       } catch (err) {
         console.warn('Recommendation fetch failed:', err);
@@ -696,29 +740,38 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setIsLoadingRecommendations(false);
       }
     },
-    [courses, language]
+    [courses]
   );
 
-  // Auto-generate recommendations once authenticated student has courses & none cached yet
+  // Auto-generate recommendations once per unique course list (never infinite-loop on API errors)
   useEffect(() => {
     if (
-      isAuthenticated &&
-      student.onboardingCompleted &&
-      courses.length > 0 &&
-      courseRecommendations.length === 0 &&
-      !isLoadingRecommendations &&
-      !isOffline
+      !isAuthenticated ||
+      !student.onboardingCompleted ||
+      courses.length === 0 ||
+      isLoadingRecommendations ||
+      isOffline
     ) {
-      const timer = setTimeout(() => {
-        void refreshCourseRecommendations(courses);
-      }, 0);
-      return () => clearTimeout(timer);
+      return;
     }
+
+    const coursesKey = courses
+      .map((c) => c.courseName.trim().toLowerCase())
+      .sort()
+      .join('|');
+
+    if (lastFetchedCoursesKeyRef.current === coursesKey) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      void refreshCourseRecommendations(courses);
+    }, 0);
+    return () => clearTimeout(timer);
   }, [
     isAuthenticated,
     student.onboardingCompleted,
     courses,
-    courseRecommendations.length,
     isLoadingRecommendations,
     isOffline,
     refreshCourseRecommendations,
@@ -802,6 +855,40 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return { ok: true };
   };
 
+  const restoreStudentCoursesFromCache = (targetStudentId: string) => {
+    try {
+      const perRaw = localStorage.getItem(`campusx_student_data_${targetStudentId}`);
+      if (perRaw) {
+        const parsed = JSON.parse(perRaw);
+        const restoredCourses: Course[] = Array.isArray(parsed.courses) ? parsed.courses : [];
+        setCourses(restoredCourses);
+        setSchedule(Array.isArray(parsed.schedule) ? parsed.schedule : []);
+        if (Array.isArray(parsed.courseRecommendations) && parsed.courseRecommendations.length > 0) {
+          setCourseRecommendations(parsed.courseRecommendations);
+          lastFetchedCoursesKeyRef.current = restoredCourses
+            .map((c) => c.courseName.trim().toLowerCase())
+            .sort()
+            .join('|');
+        } else {
+          setCourseRecommendations([]);
+          lastFetchedCoursesKeyRef.current = '';
+        }
+        return;
+      }
+    } catch {
+      // ignore
+    }
+    setCourseRecommendations([]);
+    lastFetchedCoursesKeyRef.current = '';
+    if (targetStudentId === INITIAL_STUDENT.studentId) {
+      setCourses(INITIAL_COURSES);
+      setSchedule(INITIAL_SCHEDULE);
+    } else {
+      setCourses([]);
+      setSchedule([]);
+    }
+  };
+
   const loginStudent: StoreContextType['loginStudent'] = async (identifier, password) => {
     const cleanId = identifier.trim().toLowerCase();
     const pwdHash = await hashPassword(password);
@@ -834,6 +921,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           onboardingCompleted: row.onboarding_completed,
           status: row.status || 'active',
         } as Student;
+        restoreStudentCoursesFromCache(logged.studentId);
         setStudent(logged);
         setIsAuthenticated(true);
         localStorage.setItem(SESSION_KEY, JSON.stringify(logged));
@@ -849,6 +937,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (found.passwordHash && found.passwordHash !== pwdHash) {
         return { ok: false, error: 'Invalid password.' };
       }
+      restoreStudentCoursesFromCache(found.studentId);
       setStudent(found);
       setIsAuthenticated(true);
       localStorage.setItem(SESSION_KEY, JSON.stringify(found));
@@ -863,7 +952,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logoutStudent = () => {
+    lastFetchedCoursesKeyRef.current = '';
     setIsAuthenticated(false);
+    setCourses([]);
+    setSchedule([]);
+    setCourseRecommendations([]);
     localStorage.removeItem(SESSION_KEY);
     setActiveView('dashboard');
     showToast('Signed out.');
@@ -942,7 +1035,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
     setActiveView('dashboard');
     showToast('Schedule saved! Generating AI external course recommendations...');
-    await refreshCourseRecommendations(uploadedCourses);
+    void refreshCourseRecommendations(uploadedCourses);
   };
 
   // --- SEPARATE ADMIN AUTHENTICATION & MANAGEMENT ---
@@ -1097,7 +1190,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   };
 
   // --- COURSES & SCHEDULE ---
-  const addCourse = async (course: Course) => {
+  const addCourse: StoreContextType['addCourse'] = async (course) => {
+    const startMins = parseTimeToMinutes(course.startTime);
+    const endMins = parseTimeToMinutes(course.endTime);
+    if (startMins < 0 || endMins < 0 || endMins <= startMins) {
+      const msg = 'End time must be after start time.';
+      showToast(msg);
+      return { ok: false, error: msg };
+    }
+
+    const conflict = findCourseTimeConflict(course, courses);
+    if (conflict) {
+      const msg = `Time conflict with "${conflict.conflictingCourse}" on ${conflict.overlappingDays.join(', ')} (${conflict.timeRange}).`;
+      showToast(msg);
+      return { ok: false, error: msg };
+    }
+
     const nextCourses = [course, ...courses];
     setCourses(nextCourses);
 
@@ -1134,21 +1242,118 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       });
     }
 
-    showToast(`Added ${course.courseCode} to your schedule.`);
-    refreshCourseRecommendations(nextCourses);
+    showToast(`Added ${course.courseName} to your schedule.`);
+    void refreshCourseRecommendations(nextCourses);
+    return { ok: true };
+  };
+
+  const updateCourse: StoreContextType['updateCourse'] = async (courseId, updatedCourse) => {
+    const startMins = parseTimeToMinutes(updatedCourse.startTime);
+    const endMins = parseTimeToMinutes(updatedCourse.endTime);
+    if (startMins < 0 || endMins < 0 || endMins <= startMins) {
+      const msg = 'End time must be after start time.';
+      showToast(msg);
+      return { ok: false, error: msg };
+    }
+
+    const otherCourses = courses.filter((c) => c.courseId !== courseId);
+    const conflict = findCourseTimeConflict(updatedCourse, otherCourses);
+    if (conflict) {
+      const msg = `Time conflict with "${conflict.conflictingCourse}" on ${conflict.overlappingDays.join(', ')} (${conflict.timeRange}).`;
+      showToast(msg);
+      return { ok: false, error: msg };
+    }
+
+    const previousCourse = courses.find((c) => c.courseId === courseId);
+    const nextCourses = courses.map((c) => (c.courseId === courseId ? updatedCourse : c));
+    setCourses(nextCourses);
+
+    setSchedule((prev) => {
+      const hasLectureRow = prev.some((s) => s.courseId === courseId && s.type === 'class');
+      const updatedSchedule = prev.map((s) => {
+        if (s.courseId === courseId && s.type === 'class') {
+          return {
+            ...s,
+            courseCode: updatedCourse.courseCode,
+            title: updatedCourse.courseName,
+            dayOfWeek: updatedCourse.days.join('/'),
+            startTime: updatedCourse.startTime,
+            endTime: updatedCourse.endTime,
+            location: updatedCourse.classroom,
+            building: updatedCourse.building,
+          };
+        }
+        return s;
+      });
+
+      if (!hasLectureRow) {
+        return [
+          {
+            scheduleId: `lec_${updatedCourse.courseId}`,
+            courseId: updatedCourse.courseId,
+            courseCode: updatedCourse.courseCode,
+            title: updatedCourse.courseName,
+            dayOfWeek: updatedCourse.days.join('/'),
+            startTime: updatedCourse.startTime,
+            endTime: updatedCourse.endTime,
+            location: updatedCourse.classroom,
+            building: updatedCourse.building,
+            type: 'class',
+            status: 'upcoming',
+          },
+          ...updatedSchedule,
+        ];
+      }
+      return updatedSchedule;
+    });
+
+    const supabase = getSupabaseClient();
+    if (supabase && navigator.onLine && isAuthenticated) {
+      await supabase
+        .from('student_courses')
+        .update({
+          course_code: updatedCourse.courseCode,
+          course_name: updatedCourse.courseName,
+          credit_hours: updatedCourse.creditHours,
+          instructor_name: updatedCourse.instructorName,
+          classroom: updatedCourse.classroom,
+          building: updatedCourse.building,
+          days: updatedCourse.days,
+          start_time: updatedCourse.startTime,
+          end_time: updatedCourse.endTime,
+          syllabus: updatedCourse.syllabus || '',
+        })
+        .eq('id', courseId);
+    }
+
+    showToast(`Updated ${updatedCourse.courseName}.`);
+    const nameChanged =
+      !previousCourse ||
+      previousCourse.courseName.trim().toLowerCase() !== updatedCourse.courseName.trim().toLowerCase();
+    if (nameChanged) {
+      void refreshCourseRecommendations(nextCourses);
+    }
+    return { ok: true };
   };
 
   const deleteCourse = async (courseId: string) => {
     const nextCourses = courses.filter((c) => c.courseId !== courseId);
     setCourses(nextCourses);
     setSchedule((prev) => prev.filter((s) => s.courseId !== courseId));
+    setCourseRecommendations((prev) =>
+      prev.filter((g) =>
+        nextCourses.some(
+          (c) => c.courseName.trim().toLowerCase() === g.courseName.trim().toLowerCase()
+        )
+      )
+    );
 
     const supabase = getSupabaseClient();
     if (supabase && navigator.onLine) {
       await supabase.from('student_courses').delete().eq('id', courseId);
     }
     showToast('Course removed.');
-    refreshCourseRecommendations(nextCourses);
+    void refreshCourseRecommendations(nextCourses);
   };
 
   const addScheduleItem = async (item: ScheduleItem) => {
@@ -1441,6 +1646,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         deleteAdminAccount,
         courses,
         addCourse,
+        updateCourse,
         deleteCourse,
         schedule,
         addScheduleItem,

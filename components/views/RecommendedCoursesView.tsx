@@ -23,6 +23,12 @@ export function RecommendedCoursesView() {
     setActiveView,
   } = useStore();
 
+  const matchingRecommendations = courseRecommendations.filter((group) =>
+    courses.some(
+      (c) => c.courseName.trim().toLowerCase() === group.courseName.trim().toLowerCase()
+    )
+  );
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Header */}
@@ -36,7 +42,7 @@ export function RecommendedCoursesView() {
             Recommended External Courses
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-            Tailored from your uploaded semester courses: external resources split into During-Semester reinforcement and Post-Semester deep dives.
+            Tailored strictly from your enrolled semester courses: external resources split into During-Semester reinforcement and Post-Semester deep dives.
           </p>
         </div>
 
@@ -72,7 +78,7 @@ export function RecommendedCoursesView() {
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
-      ) : isLoadingRecommendations && courseRecommendations.length === 0 ? (
+      ) : isLoadingRecommendations && matchingRecommendations.length === 0 ? (
         <div className="p-12 rounded-3xl bg-[#141C2D] border border-white/10 text-center space-y-3">
           <Loader2 className="w-8 h-8 text-cyan-400 animate-spin mx-auto" />
           <p className="text-sm font-semibold text-white">
@@ -81,16 +87,18 @@ export function RecommendedCoursesView() {
         </div>
       ) : (
         <div className="space-y-6">
-          {courseRecommendations.map((group) => (
+          {matchingRecommendations.map((group, idx) => (
             <div
-              key={group.courseCode}
+              key={`${group.courseName}-${idx}`}
               className="p-5 sm:p-6 rounded-3xl bg-[#141C2D] border border-white/10 space-y-5"
             >
               <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-white/10">
                 <div className="flex items-center gap-2.5">
-                  <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
-                    {group.courseCode}
-                  </span>
+                  {group.courseCode && (
+                    <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                      {group.courseCode}
+                    </span>
+                  )}
                   <h2 className="text-base sm:text-lg font-extrabold text-white">
                     {group.courseName}
                   </h2>

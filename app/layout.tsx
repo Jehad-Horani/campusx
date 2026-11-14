@@ -13,6 +13,11 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: 'CampusX — Smart University Platform | ASU',
   description: 'Next-generation smart university ecosystem for Applied Science Private University (ASU). Campus Mode, Offline-first academic tools, AI course recommendations, and campus reporting.',
+  icons: {
+    icon: [{ url: '/assets/aistudio/LOGO_bc48159f.png', type: 'image/png' }],
+    shortcut: ['/assets/aistudio/LOGO_bc48159f.png'],
+    apple: ['/assets/aistudio/LOGO_bc48159f.png'],
+  },
   openGraph: {
     title: 'CampusX — Smart University Platform | ASU',
     description: 'Next-generation smart university ecosystem for Applied Science Private University (ASU).',

@@ -79,21 +79,34 @@ export async function POST(req: NextRequest) {
       parts: [{ text: message }],
     });
 
-    const response = await ai.models.generateContent({
-      model: "gemini-4-hydrogen",
-      contents,
-      config: {
-        systemInstruction: MENTAL_HEALTH_INSTRUCTION,
-      },
-    });
+    let text = "";
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-4-hydrogen",
+        contents,
+        config: {
+          systemInstruction: MENTAL_HEALTH_INSTRUCTION,
+        },
+      });
+      text = response.text || "";
+    } catch {
+      const fallbackResponse = await ai.models.generateContent({
+        model: "gemini-3.1-flash-lite",
+        contents,
+        config: {
+          systemInstruction: MENTAL_HEALTH_INSTRUCTION,
+        },
+      });
+      text = fallbackResponse.text || "";
+    }
 
-    const text =
-      response.text ||
-      "I am right here with you. Take a slow, gentle breath. What feels most heavy on your mind today?";
+    if (!text) {
+      text = "I am right here with you. Take a slow, gentle breath. What feels most heavy on your mind today?";
+    }
 
     return NextResponse.json({ text, isCrisis: false, isDemo: false });
   } catch (error: unknown) {
-    console.error("Mental health assistant error:", error);
+    console.warn("Mental health assistant fallback triggered:", error instanceof Error ? error.message : "Service fallback");
     const errMsg = error instanceof Error ? error.message : "Service fallback triggered";
     return NextResponse.json({
       text: getOfflineEmpatheticReply(),

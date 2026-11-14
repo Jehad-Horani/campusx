@@ -1,10 +1,13 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useStore } from '@/lib/store';
 import {
   decodeAsuClassroom,
   estimateWalkingMinutesToBuilding,
+  formatMinutesToHours,
+  formatTime12h,
+  getNextScheduledCourse,
   isInsideAsuCampus,
   ASU_CAMPUS_MAPS_URL,
 } from '@/lib/asu-campus';
@@ -32,30 +35,24 @@ export function CampusModeCard() {
     t,
   } = useStore();
 
-  const { nextCourse, minsUntilClass } = useMemo(() => {
-    if (!courses || courses.length === 0) {
-      return { nextCourse: null, minsUntilClass: 15 };
-    }
-    const now = new Date();
-    const currentMins = now.getHours() * 60 + now.getMinutes();
+  const [nowMs, setNowMs] = useState<number>(0);
 
-    let best = courses[0];
-    let bestDiff = 9999;
+  useEffect(() => {
+    const t0 = setTimeout(() => setNowMs(Date.now()), 0);
+    const interval = setInterval(() => setNowMs(Date.now()), 30000);
+    return () => {
+      clearTimeout(t0);
+      clearInterval(interval);
+    };
+  }, []);
 
-    courses.forEach((c) => {
-      const [hh, mm] = (c.startTime || '10:00').split(':').map(Number);
-      if (Number.isNaN(hh) || Number.isNaN(mm)) return;
-      const startMins = hh * 60 + mm;
-      const diff = startMins - currentMins;
-      if (diff >= -10 && diff < bestDiff) {
-        bestDiff = diff;
-        best = c;
-      }
-    });
+  const nextSchedule = useMemo(() => {
+    if (!courses || courses.length === 0 || !nowMs) return null;
+    return getNextScheduledCourse(courses, new Date(nowMs));
+  }, [courses, nowMs]);
 
-    const displayDiff = bestDiff === 9999 ? 14 : Math.max(1, bestDiff);
-    return { nextCourse: best, minsUntilClass: displayDiff };
-  }, [courses]);
+  const nextCourse = nextSchedule?.course || (courses && courses.length > 0 ? courses[0] : null);
+  const minsUntilClass = nextSchedule ? nextSchedule.minutesUntilStart : 0;
 
   const decodedRoom = nextCourse ? decodeAsuClassroom(nextCourse.classroom) : null;
   const targetBuildingCode = decodedRoom?.isValid ? decodedRoom.buildingCode : '1';
@@ -72,10 +69,14 @@ export function CampusModeCard() {
     : null;
 
   let arrivalStatus: 'ON TIME' | 'TIGHT' | 'LATE' = 'ON TIME';
-  if (minsUntilClass < walkInfo.minutes) {
+  if (nextSchedule?.isOngoing) {
     arrivalStatus = 'LATE';
-  } else if (minsUntilClass <= walkInfo.minutes + 3) {
-    arrivalStatus = 'TIGHT';
+  } else if (nextSchedule && nextSchedule.dayOffset === 0) {
+    if (minsUntilClass < walkInfo.minutes) {
+      arrivalStatus = 'LATE';
+    } else if (minsUntilClass <= walkInfo.minutes + 3) {
+      arrivalStatus = 'TIGHT';
+    }
   }
 
   const statusConfig = {
@@ -94,11 +95,11 @@ export function CampusModeCard() {
       indicatorColor: 'bg-amber-400',
     },
     LATE: {
-      text: t.status.late,
-      badgeBg: 'bg-rose-500/20',
-      badgeBorder: 'border-rose-500/40',
-      textColor: 'text-rose-300',
-      indicatorColor: 'bg-rose-400',
+      text: nextSchedule?.isOngoing ? 'IN PROGRESS' : t.status.late,
+      badgeBg: nextSchedule?.isOngoing ? 'bg-cyan-500/20' : 'bg-rose-500/20',
+      badgeBorder: nextSchedule?.isOngoing ? 'border-cyan-500/40' : 'border-rose-500/40',
+      textColor: nextSchedule?.isOngoing ? 'text-cyan-300' : 'text-rose-300',
+      indicatorColor: nextSchedule?.isOngoing ? 'bg-cyan-400' : 'bg-rose-400',
     },
   }[arrivalStatus];
 
@@ -168,14 +169,26 @@ export function CampusModeCard() {
       ) : (
         <div className="pt-4 grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6 items-center">
           <div className="md:col-span-7 space-y-2.5">
-            <div className="text-[11px] font-semibold text-slate-400">
-              {t.campusMode.nextClass} · {nextCourse.startTime} - {nextCourse.endTime}
+            <div className="text-[11px] font-semibold text-slate-400 flex flex-wrap items-center gap-1.5">
+              <span>{t.campusMode.nextClass}</span>
+              {nextSchedule && (
+                <>
+                  <span>·</span>
+                  <span className="text-cyan-300 font-bold">{nextSchedule.dayLabel}</span>
+                </>
+              )}
+              <span>·</span>
+              <span>
+                {formatTime12h(nextCourse.startTime)} - {formatTime12h(nextCourse.endTime)}
+              </span>
             </div>
             <h2 className="text-lg sm:text-xl font-black text-white flex flex-wrap items-center gap-2">
               <span>{nextCourse.courseName}</span>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white/10 text-cyan-300 border border-white/10">
-                {nextCourse.courseCode}
-              </span>
+              {nextCourse.courseCode && (
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white/10 text-cyan-300 border border-white/10">
+                  {nextCourse.courseCode}
+                </span>
+              )}
             </h2>
 
             <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
@@ -199,10 +212,14 @@ export function CampusModeCard() {
             <div className="p-2.5 rounded-xl bg-white/5 border border-white/5">
               <div className="text-[10px] text-slate-400 flex items-center justify-center gap-1">
                 <Clock className="w-3 h-3 text-cyan-400" />
-                <span>{t.campusMode.startsIn}</span>
+                <span>{nextSchedule?.isOngoing ? 'Ends in' : t.campusMode.startsIn}</span>
               </div>
               <div className="text-base sm:text-lg font-extrabold text-white font-mono mt-0.5 tabular-nums">
-                {minsUntilClass}m
+                {!nowMs || !nextSchedule
+                  ? '—'
+                  : nextSchedule.isOngoing
+                  ? formatMinutesToHours(nextSchedule.minutesRemaining)
+                  : formatMinutesToHours(minsUntilClass)}
               </div>
             </div>
 

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useStore } from '@/lib/store';
-import { decodeAsuClassroom } from '@/lib/asu-campus';
+import { decodeAsuClassroom, formatTime12h } from '@/lib/asu-campus';
 import { WifiOff, Clock, MapPin, User, BookOpen, Calendar } from 'lucide-react';
 
 export function OfflineCachedView() {
@@ -69,14 +69,13 @@ export function OfflineCachedView() {
                     key={c.courseId}
                     className="p-4 rounded-2xl bg-[#141C2D] border border-white/10 space-y-2.5"
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-xs font-bold text-cyan-400 bg-cyan-950/60 px-2.5 py-0.5 rounded-lg border border-cyan-500/20">
-                        {c.courseCode}
-                      </span>
-                      <span className="text-[11px] text-slate-400 font-mono">
-                        {c.creditHours} Cr
-                      </span>
-                    </div>
+                    {c.courseCode && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-xs font-bold text-cyan-400 bg-cyan-950/60 px-2.5 py-0.5 rounded-lg border border-cyan-500/20">
+                          {c.courseCode}
+                        </span>
+                      </div>
+                    )}
 
                     <div className="flex items-center gap-2">
                       <BookOpen className="w-4 h-4 text-cyan-400 shrink-0" />
@@ -86,7 +85,7 @@ export function OfflineCachedView() {
                     <div className="text-xs text-slate-300 flex items-center gap-2">
                       <Clock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                       <span>
-                        {c.days.join(' / ')} · {c.startTime} - {c.endTime}
+                        {c.days.join(' / ')} · {formatTime12h(c.startTime)} - {formatTime12h(c.endTime)}
                       </span>
                     </div>
 

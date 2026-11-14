@@ -363,3 +363,304 @@ export function estimateWalkingMinutesToBuilding(
   const minutes = Math.max(1, Math.ceil(meters / metersPerMin));
   return { minutes, meters };
 }
+
+export function formatMinutesToHours(totalMinutes: number): string {
+  if (totalMinutes <= 0) return 'Now';
+  const days = Math.floor(totalMinutes / 1440);
+  const remAfterDays = totalMinutes % 1440;
+  const hrs = Math.floor(remAfterDays / 60);
+  const mins = remAfterDays % 60;
+
+  if (days > 0) {
+    if (hrs === 0) return `${days}d`;
+    return `${days}d ${hrs}h`;
+  }
+  if (hrs === 0) return `${mins}m`;
+  if (mins === 0) return `${hrs}h`;
+  return `${hrs}h ${mins}m`;
+}
+
+export function parseTimeToMinutes(timeStr: string): number {
+  const raw = (timeStr || '').trim().toUpperCase();
+  if (!raw) return -1;
+
+  const amPmMatch = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/);
+  if (amPmMatch) {
+    let hh = Number(amPmMatch[1]);
+    const mm = Number(amPmMatch[2]);
+    const period = amPmMatch[3];
+    if (Number.isNaN(hh) || Number.isNaN(mm) || hh < 1 || hh > 12 || mm < 0 || mm > 59) return -1;
+    if (period === 'AM' && hh === 12) hh = 0;
+    if (period === 'PM' && hh < 12) hh += 12;
+    return hh * 60 + mm;
+  }
+
+  const hhmmMatch = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (hhmmMatch) {
+    const hh = Number(hhmmMatch[1]);
+    const mm = Number(hhmmMatch[2]);
+    if (Number.isNaN(hh) || Number.isNaN(mm) || hh < 0 || hh > 23 || mm < 0 || mm > 59) return -1;
+    return hh * 60 + mm;
+  }
+
+  return -1;
+}
+
+export function formatMinutesToHHMM(totalMinutes: number): string {
+  const clamped = Math.max(0, Math.min(23 * 60 + 59, totalMinutes));
+  const hh = Math.floor(clamped / 60);
+  const mm = clamped % 60;
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+}
+
+export function formatTime12h(timeStr: string): string {
+  const mins = parseTimeToMinutes(timeStr);
+  if (mins < 0) return timeStr || '—';
+  const hh24 = Math.floor(mins / 60);
+  const mm = mins % 60;
+  const period = hh24 >= 12 ? 'PM' : 'AM';
+  const hh12 = hh24 % 12 === 0 ? 12 : hh24 % 12;
+  return `${hh12}:${String(mm).padStart(2, '0')} ${period}`;
+}
+
+export function normalizeTimeHHMM(timeStr: string): string {
+  const mins = parseTimeToMinutes(timeStr);
+  return mins >= 0 ? formatMinutesToHHMM(mins) : timeStr;
+}
+
+export interface CourseTimeConflict {
+  conflictingCourse: string;
+  overlappingDays: string[];
+  timeRange: string;
+}
+
+export function findCourseTimeConflict(
+  candidate: { days: string[]; startTime: string; endTime: string },
+  existingCourses: Array<{ courseName: string; days: string[]; startTime: string; endTime: string }>
+): CourseTimeConflict | null {
+  const candStart = parseTimeToMinutes(candidate.startTime);
+  const candEnd = parseTimeToMinutes(candidate.endTime);
+  if (candStart < 0 || candEnd < 0 || candEnd <= candStart) return null;
+
+  for (const existing of existingCourses) {
+    const exDays = Array.isArray(existing.days) ? existing.days : [];
+    const overlappingDays = candidate.days.filter((d) => exDays.includes(d));
+    if (overlappingDays.length === 0) continue;
+
+    const exStart = parseTimeToMinutes(existing.startTime);
+    const exEnd = parseTimeToMinutes(existing.endTime);
+    if (exStart < 0 || exEnd < 0) continue;
+
+    if (candStart < exEnd && candEnd > exStart) {
+      return {
+        conflictingCourse: existing.courseName,
+        overlappingDays,
+        timeRange: `${formatTime12h(existing.startTime)} - ${formatTime12h(existing.endTime)}`,
+      };
+    }
+  }
+  return null;
+}
+
+export interface BlockedTimeInterval {
+  start: number;
+  end: number;
+  courseName: string;
+  startTime: string;
+  endTime: string;
+}
+
+export function getBlockedIntervalsForDays(
+  days: string[],
+  existingCourses: Array<{ courseName: string; days: string[]; startTime: string; endTime: string }>
+): BlockedTimeInterval[] {
+  const intervals: BlockedTimeInterval[] = [];
+  for (const c of existingCourses) {
+    const cDays = Array.isArray(c.days) ? c.days : [];
+    if (!days.some((d) => cDays.includes(d))) continue;
+    const start = parseTimeToMinutes(c.startTime);
+    const end = parseTimeToMinutes(c.endTime);
+    if (start >= 0 && end > start) {
+      intervals.push({
+        start,
+        end,
+        courseName: c.courseName,
+        startTime: formatMinutesToHHMM(start),
+        endTime: formatMinutesToHHMM(end),
+      });
+    }
+  }
+  return intervals.sort((a, b) => a.start - b.start);
+}
+
+export interface TimeSlotOption {
+  value: string;
+  label: string;
+  minutes: number;
+  disabled: boolean;
+  blockedBy?: string;
+}
+
+const CAMPUS_DAY_START = 8 * 60; // 08:00 AM
+const CAMPUS_DAY_END = 21 * 60; // 09:00 PM
+const SLOT_STEP = 30; // 30-minute (half-hour) increments
+const MIN_LECTURE_MINUTES = 30;
+
+export function getStartTimeSlots(
+  days: string[],
+  existingCourses: Array<{ courseName: string; days: string[]; startTime: string; endTime: string }>
+): TimeSlotOption[] {
+  const blocked = getBlockedIntervalsForDays(days, existingCourses);
+  const slots: TimeSlotOption[] = [];
+
+  for (let m = CAMPUS_DAY_START; m <= CAMPUS_DAY_END - MIN_LECTURE_MINUTES; m += SLOT_STEP) {
+    const inside = blocked.find((b) => m >= b.start && m < b.end);
+    const tooCloseToNext = blocked.find(
+      (b) => b.start > m && b.start < m + MIN_LECTURE_MINUTES
+    );
+    const blocker = inside || tooCloseToNext;
+    const hhmm = formatMinutesToHHMM(m);
+    slots.push({
+      value: hhmm,
+      label: formatTime12h(hhmm),
+      minutes: m,
+      disabled: Boolean(blocker),
+      blockedBy: blocker?.courseName,
+    });
+  }
+  return slots;
+}
+
+export function getEndTimeSlots(
+  startTime: string,
+  days: string[],
+  existingCourses: Array<{ courseName: string; days: string[]; startTime: string; endTime: string }>
+): TimeSlotOption[] {
+  const startMins = parseTimeToMinutes(startTime);
+  if (startMins < 0) return [];
+
+  const blocked = getBlockedIntervalsForDays(days, existingCourses);
+  const startInsideBlock = blocked.find((b) => startMins >= b.start && startMins < b.end);
+  const nextBlock = blocked.find((b) => b.start > startMins);
+  const slots: TimeSlotOption[] = [];
+
+  for (let m = startMins + SLOT_STEP; m <= CAMPUS_DAY_END; m += SLOT_STEP) {
+    if (m - startMins < MIN_LECTURE_MINUTES) continue;
+
+    const blocker = startInsideBlock || (nextBlock && m > nextBlock.start ? nextBlock : undefined);
+    const hhmm = formatMinutesToHHMM(m);
+    slots.push({
+      value: hhmm,
+      label: formatTime12h(hhmm),
+      minutes: m,
+      disabled: Boolean(blocker),
+      blockedBy: blocker?.courseName,
+    });
+  }
+  return slots;
+}
+
+export function findFirstAvailableSlot(
+  days: string[],
+  existingCourses: Array<{ courseName: string; days: string[]; startTime: string; endTime: string }>,
+  preferredDurationMins: number = 60
+): { startTime: string; endTime: string } | null {
+  const startSlots = getStartTimeSlots(days, existingCourses);
+  const blocked = getBlockedIntervalsForDays(days, existingCourses);
+
+  for (const passDuration of [preferredDurationMins, MIN_LECTURE_MINUTES]) {
+    for (const s of startSlots) {
+      if (s.disabled) continue;
+      const nextBlock = blocked.find((b) => b.start > s.minutes);
+      const maxEnd = nextBlock ? nextBlock.start : CAMPUS_DAY_END;
+      const rawEnd = Math.min(s.minutes + preferredDurationMins, maxEnd);
+      const snappedEnd = Math.floor(rawEnd / SLOT_STEP) * SLOT_STEP;
+      if (snappedEnd - s.minutes >= passDuration) {
+        return {
+          startTime: s.value,
+          endTime: formatMinutesToHHMM(snappedEnd),
+        };
+      }
+    }
+  }
+  return null;
+}
+
+const WEEK_DAY_CODES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+
+export interface NextScheduledCourseResult<T> {
+  course: T;
+  minutesUntilStart: number;
+  minutesRemaining: number;
+  isOngoing: boolean;
+  dayOffset: number;
+  dayLabel: string;
+}
+
+export function getNextScheduledCourse<
+  T extends { days: string[]; startTime: string; endTime: string }
+>(courses: T[], nowDate: Date = new Date()): NextScheduledCourseResult<T> | null {
+  if (!courses || courses.length === 0) return null;
+
+  const todayIdx = nowDate.getDay();
+  const currentMins = nowDate.getHours() * 60 + nowDate.getMinutes();
+
+  let best: NextScheduledCourseResult<T> | null = null;
+
+  for (let dayOffset = 0; dayOffset <= 7; dayOffset++) {
+    const dayCode = WEEK_DAY_CODES[(todayIdx + dayOffset) % 7];
+
+    for (const course of courses) {
+      const hasDays = Array.isArray(course.days) && course.days.length > 0;
+      if (hasDays && !course.days.includes(dayCode)) continue;
+
+      const startMins = parseTimeToMinutes(course.startTime);
+      const endMins = parseTimeToMinutes(course.endTime);
+      if (startMins < 0) continue;
+      const effectiveEnd = endMins > startMins ? endMins : startMins + 60;
+
+      if (dayOffset === 0) {
+        if (currentMins >= startMins && currentMins < effectiveEnd) {
+          // Lecture currently in progress!
+          return {
+            course,
+            minutesUntilStart: 0,
+            minutesRemaining: effectiveEnd - currentMins,
+            isOngoing: true,
+            dayOffset: 0,
+            dayLabel: 'Now',
+          };
+        }
+        if (startMins > currentMins) {
+          const diff = startMins - currentMins;
+          if (!best || diff < best.minutesUntilStart) {
+            best = {
+              course,
+              minutesUntilStart: diff,
+              minutesRemaining: effectiveEnd - startMins,
+              isOngoing: false,
+              dayOffset: 0,
+              dayLabel: 'Today',
+            };
+          }
+        }
+      } else {
+        const diff = dayOffset * 1440 + (startMins - currentMins);
+        if (!best || diff < best.minutesUntilStart) {
+          best = {
+            course,
+            minutesUntilStart: diff,
+            minutesRemaining: effectiveEnd - startMins,
+            isOngoing: false,
+            dayOffset,
+            dayLabel: dayOffset === 1 ? 'Tomorrow' : dayCode,
+          };
+        }
+      }
+    }
+
+    if (best) break;
+  }
+
+  return best;
+}

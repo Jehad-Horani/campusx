@@ -2,19 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ai } from '@/lib/gemini';
 import { CourseRecommendationGroup } from '@/types/campusx';
 
-function buildIntelligentFallback(
-  courses: Array<{ courseCode: string; courseName: string; syllabus?: string }>
-): CourseRecommendationGroup[] {
+interface InputCourse {
+  courseCode?: string;
+  courseName: string;
+  syllabus?: string;
+}
+
+function buildIntelligentFallback(courses: InputCourse[]): CourseRecommendationGroup[] {
   const now = new Date().toISOString().split('T')[0];
 
   return courses.map((c) => {
-    const query = encodeURIComponent(c.courseName);
-    const lower = `${c.courseCode} ${c.courseName}`.toLowerCase();
+    const cleanName = c.courseName.trim();
+    const cleanCode = (c.courseCode || '').trim();
+    const query = encodeURIComponent(cleanName);
+    const lower = `${cleanCode} ${cleanName}`.toLowerCase();
 
-    if (lower.includes('distributed') || lower.includes('cloud') || lower.includes('cs412')) {
+    if (lower.includes('distributed') || lower.includes('cloud')) {
       return {
-        courseCode: c.courseCode,
-        courseName: c.courseName,
+        courseCode: cleanCode,
+        courseName: cleanName,
         generatedAt: now,
         duringSemester: [
           {
@@ -22,7 +28,7 @@ function buildIntelligentFallback(
             provider: 'MIT OpenCourseWare / YouTube',
             level: 'Intermediate',
             duration: '12 hours',
-            reason: 'Visual, step-by-step mastery of Raft consensus and fault tolerance.',
+            reason: `Visual, step-by-step mastery of consensus and fault tolerance tailored to ${cleanName}.`,
             url: `https://www.coursera.org/search?query=${query}`,
           },
           {
@@ -30,7 +36,7 @@ function buildIntelligentFallback(
             provider: 'Coursera — University of Illinois',
             level: 'Practical',
             duration: '14 hours',
-            reason: 'Strengthens distributed synchronization and cloud architecture fundamentals.',
+            reason: `Strengthens synchronization and architecture fundamentals for ${cleanName}.`,
             url: 'https://www.coursera.org/learn/cloud-computing',
           },
         ],
@@ -40,7 +46,7 @@ function buildIntelligentFallback(
             provider: 'Udemy / CNCF',
             level: 'Advanced',
             duration: '28 hours',
-            reason: 'Production-grade distributed data systems & Kubernetes orchestration.',
+            reason: `Production-grade distributed data systems building on ${cleanName}.`,
             url: 'https://www.udemy.com/topic/kubernetes/',
           },
           {
@@ -55,10 +61,10 @@ function buildIntelligentFallback(
       };
     }
 
-    if (lower.includes('architecture') || lower.includes('software') || lower.includes('se320')) {
+    if (lower.includes('architecture') || lower.includes('software')) {
       return {
-        courseCode: c.courseCode,
-        courseName: c.courseName,
+        courseCode: cleanCode,
+        courseName: cleanName,
         generatedAt: now,
         duringSemester: [
           {
@@ -66,7 +72,7 @@ function buildIntelligentFallback(
             provider: 'Refactoring Guru / Coursera',
             level: 'Intermediate',
             duration: '10 hours',
-            reason: 'Hands-on mastery of SOLID principles and software design patterns.',
+            reason: `Hands-on mastery of SOLID principles and design patterns for ${cleanName}.`,
             url: 'https://refactoring.guru/design-patterns',
           },
           {
@@ -74,7 +80,7 @@ function buildIntelligentFallback(
             provider: 'Coursera — University of Alberta',
             level: 'Intermediate',
             duration: '16 hours',
-            reason: 'Covers layered architecture, UML, and microservice boundaries.',
+            reason: `Covers layered architecture, UML, and boundaries relevant to ${cleanName}.`,
             url: 'https://www.coursera.org/learn/software-architecture',
           },
         ],
@@ -84,17 +90,17 @@ function buildIntelligentFallback(
             provider: 'Udemy / Pluralsight',
             level: 'Advanced',
             duration: '24 hours',
-            reason: 'Deep specialization in DDD, Event Sourcing, and CQRS.',
+            reason: `Deep specialization in DDD and Event Sourcing after completing ${cleanName}.`,
             url: `https://www.udemy.com/courses/search/?q=${query}`,
           },
         ],
       };
     }
 
-    if (lower.includes('deep') || lower.includes('ai') || lower.includes('neural')) {
+    if (lower.includes('deep') || lower.includes('neural') || lower.includes('machine learning') || lower.includes('artificial intelligence')) {
       return {
-        courseCode: c.courseCode,
-        courseName: c.courseName,
+        courseCode: cleanCode,
+        courseName: cleanName,
         generatedAt: now,
         duringSemester: [
           {
@@ -102,7 +108,7 @@ function buildIntelligentFallback(
             provider: 'DeepLearning.AI (Coursera)',
             level: 'Foundational',
             duration: '18 hours',
-            reason: 'Crystal-clear walkthrough of backpropagation and neural nets.',
+            reason: `Clear walkthrough of core concepts to support your progress in ${cleanName}.`,
             url: 'https://www.coursera.org/learn/neural-networks-deep-learning',
           },
           {
@@ -110,7 +116,7 @@ function buildIntelligentFallback(
             provider: 'freeCodeCamp / YouTube',
             level: 'Hands-on',
             duration: '10 hours',
-            reason: 'Rapid practical PyTorch training for lab assignments.',
+            reason: `Rapid practical training for labs and projects in ${cleanName}.`,
             url: 'https://www.freecodecamp.org/news/tag/pytorch/',
           },
         ],
@@ -120,43 +126,42 @@ function buildIntelligentFallback(
             provider: 'DeepLearning.AI & AWS',
             level: 'Advanced',
             duration: '22 hours',
-            reason: 'Advanced exploration of LLM architectures, LoRA, and RLHF.',
+            reason: `Advanced exploration building directly on ${cleanName}.`,
             url: 'https://www.coursera.org/learn/generative-ai-with-llms',
           },
         ],
       };
     }
 
-    // Generic intelligent fallback for ANY faculty / course (Nursing, Pharmacy, Business, Law, Dentistry, etc.)
     return {
-      courseCode: c.courseCode,
-      courseName: c.courseName,
+      courseCode: cleanCode,
+      courseName: cleanName,
       generatedAt: now,
       duringSemester: [
         {
-          title: `${c.courseName} — Core Concepts & Exam Mastery`,
+          title: `${cleanName} — Core Concepts & Exam Mastery`,
           provider: 'Coursera / Khan Academy',
           level: 'Semester Support',
           duration: '8-12 hours',
-          reason: `Targeted review of foundational concepts for ${c.courseCode} quizzes & midterms.`,
+          reason: `Targeted review of foundational topics for ${cleanName} quizzes and midterms.`,
           url: `https://www.coursera.org/search?query=${query}`,
         },
         {
-          title: `Practical Workshops & Case Studies in ${c.courseCode}`,
+          title: `Practical Workshops & Problem Solving in ${cleanName}`,
           provider: 'edX / YouTube Academic',
           level: 'Practical',
           duration: '6 hours',
-          reason: `Solved exercises and real-world case studies aligned with ${c.courseName}.`,
+          reason: `Solved exercises and real-world case studies aligned with ${cleanName}.`,
           url: `https://www.edx.org/search?q=${query}`,
         },
       ],
       postSemester: [
         {
-          title: `Advanced Specialization in ${c.courseName}`,
+          title: `Advanced Specialization in ${cleanName}`,
           provider: 'Coursera / Udemy Professional',
           level: 'Post-Semester Deep Dive',
           duration: '25+ hours',
-          reason: `Comprehensive specialization to build career-ready depth after finishing ${c.courseCode}.`,
+          reason: `Comprehensive specialization to build career-ready depth after finishing ${cleanName}.`,
           url: `https://www.udemy.com/courses/search/?q=${query}`,
         },
       ],
@@ -167,11 +172,12 @@ function buildIntelligentFallback(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { courses = [] } = body as {
-      courses: Array<{ courseCode: string; courseName: string; syllabus?: string }>;
-    };
+    const rawCourses = (body?.courses || []) as InputCourse[];
+    const courses = Array.isArray(rawCourses)
+      ? rawCourses.filter((c) => c && typeof c.courseName === 'string' && c.courseName.trim().length > 0)
+      : [];
 
-    if (!courses || !Array.isArray(courses) || courses.length === 0) {
+    if (courses.length === 0) {
       return NextResponse.json({ recommendations: [] });
     }
 
@@ -183,21 +189,25 @@ export async function POST(req: NextRequest) {
     }
 
     const prompt = `You are an expert academic advisor at Applied Science Private University (ASU).
-For each of the student's uploaded courses below, recommend real, well-known external online courses (from Coursera, edX, Udemy, MIT OCW, DeepLearning.AI, freeCodeCamp, Khan Academy, Cisco Networking Academy, etc.).
+For EACH of the student's enrolled university courses listed below, recommend real external online courses (from Coursera, edX, Udemy, MIT OCW, DeepLearning.AI, freeCodeCamp, Khan Academy, Cisco Networking Academy, etc.).
 
-Split recommendations into TWO clear categories for EACH course:
-1. "duringSemester": 2 practical courses/tutorials to strengthen the student and help them excel DURING this semester.
-2. "postSemester": 2 deeper, advanced courses or certifications to specialize further AFTER this semester finishes.
+STRICT CONSTRAINTS:
+1. You MUST return recommendations ONLY for the exact ${courses.length} enrolled course(s) listed below.
+2. Do NOT invent, add, substitute, rename, or remove any university course names.
+3. Preserve the exact "courseName" string for every single entry in "recommendations".
+4. Split each entry into:
+   - "duringSemester": 2 practical external courses/tutorials to strengthen the student during this semester.
+   - "postSemester": 2 deeper, advanced external courses or certifications after this semester finishes.
 
-Courses:
-${courses.map((c, idx) => `${idx + 1}. ${c.courseCode} - ${c.courseName}${c.syllabus ? ` (${c.syllabus})` : ''}`).join('\n')}
+Student's Enrolled Courses (${courses.length}):
+${courses.map((c, idx) => `${idx + 1}. ${c.courseCode ? `${c.courseCode} - ` : ''}${c.courseName.trim()}${c.syllabus ? ` (${c.syllabus})` : ''}`).join('\n')}
 
 Respond strictly in JSON matching this schema:
 {
   "recommendations": [
     {
       "courseCode": "string",
-      "courseName": "string",
+      "courseName": "string (must match exact input courseName)",
       "duringSemester": [
         {
           "title": "string",
@@ -222,38 +232,95 @@ Respond strictly in JSON matching this schema:
   ]
 }`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-4-hydrogen',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-      },
-    });
+    let text = '';
+    let usedModel = 'gemini-4-hydrogen';
 
-    const text = response.text || '{}';
-    const parsed = JSON.parse(text);
-    const now = new Date().toISOString().split('T')[0];
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-4-hydrogen',
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+        },
+      });
+      text = response.text || '{}';
+    } catch {
+      try {
+        usedModel = 'gemini-3.1-flash-lite';
+        const fallbackModelResp = await ai.models.generateContent({
+          model: 'gemini-3.1-flash-lite',
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json',
+          },
+        });
+        text = fallbackModelResp.text || '{}';
+      } catch (err) {
+        console.warn(
+          'AI Course recommendation falling back to curated advisor:',
+          err instanceof Error ? err.message : 'Quota reached'
+        );
+        return NextResponse.json({
+          recommendations: buildIntelligentFallback(courses),
+          source: 'curated-fallback',
+        });
+      }
+    }
 
-    const recommendations: CourseRecommendationGroup[] = (parsed.recommendations || []).map(
-      (item: CourseRecommendationGroup) => ({
-        ...item,
-        generatedAt: now,
-      })
-    );
-
-    if (!recommendations.length) {
+    let parsed: { recommendations?: CourseRecommendationGroup[] } = {};
+    try {
+      parsed = JSON.parse(text);
+    } catch {
       return NextResponse.json({
         recommendations: buildIntelligentFallback(courses),
-        source: 'fallback',
+        source: 'curated-fallback',
       });
     }
 
-    return NextResponse.json({ recommendations, source: 'gemini' });
+    const aiList: CourseRecommendationGroup[] = Array.isArray(parsed.recommendations)
+      ? parsed.recommendations
+      : [];
+    const now = new Date().toISOString().split('T')[0];
+    const fallbackList = buildIntelligentFallback(courses);
+
+    // Strictly map 1-to-1 ONLY over the student's actual enrolled courses
+    const recommendations: CourseRecommendationGroup[] = courses.map((inputCourse, idx) => {
+      const targetName = inputCourse.courseName.trim().toLowerCase();
+      const targetCode = (inputCourse.courseCode || '').trim().toLowerCase();
+
+      const matched =
+        aiList.find(
+          (item) =>
+            (item.courseName && item.courseName.trim().toLowerCase() === targetName) ||
+            (targetCode && item.courseCode && item.courseCode.trim().toLowerCase() === targetCode)
+        ) || (aiList.length === courses.length ? aiList[idx] : undefined);
+
+      const fallback = fallbackList[idx];
+
+      return {
+        courseCode: (inputCourse.courseCode || '').trim(),
+        courseName: inputCourse.courseName.trim(),
+        generatedAt: now,
+        duringSemester:
+          matched?.duringSemester && matched.duringSemester.length > 0
+            ? matched.duringSemester
+            : fallback.duringSemester,
+        postSemester:
+          matched?.postSemester && matched.postSemester.length > 0
+            ? matched.postSemester
+            : fallback.postSemester,
+      };
+    });
+
+    return NextResponse.json({ recommendations, source: usedModel });
   } catch (error) {
-    console.error('AI Course recommendation error:', error);
+    console.warn(
+      'AI Course recommendation error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     return NextResponse.json({
       recommendations: [],
-      error: 'Failed to generate recommendations',
+      source: 'error-fallback',
     }, { status: 200 });
   }
 }

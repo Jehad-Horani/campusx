@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '@/lib/store';
 import { ScheduleItem, ScheduleItemType } from '@/types/campusx';
-import { decodeAsuClassroom } from '@/lib/asu-campus';
+import { decodeAsuClassroom, formatTime12h, parseTimeToMinutes } from '@/lib/asu-campus';
 import {
   Calendar,
   Clock,
@@ -51,6 +51,9 @@ export function ScheduleView() {
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting || !title.trim()) return;
+    if (parseTimeToMinutes(endTime) <= parseTimeToMinutes(startTime)) {
+      return;
+    }
 
     const effectiveDate = date || new Date().toISOString().split('T')[0];
     const dueIso =
@@ -214,7 +217,7 @@ export function ScheduleView() {
                       <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
                         <span className="flex items-center gap-1 text-cyan-400 font-mono">
                           <Clock className="w-3.5 h-3.5" />
-                          {item.startTime} - {item.endTime}
+                          {formatTime12h(item.startTime)} - {formatTime12h(item.endTime)}
                         </span>
                         <span className="flex items-center gap-1 text-emerald-300">
                           <MapPin className="w-3.5 h-3.5 shrink-0" />
@@ -256,7 +259,7 @@ export function ScheduleView() {
                   <div key={item.scheduleId} className="p-2.5 rounded-xl bg-[#080B14]/70 border border-white/5 text-xs space-y-1">
                     <div className="font-bold text-white truncate">{item.title}</div>
                     <div className="text-[11px] text-cyan-400 font-mono">
-                      {item.startTime} · {item.location}
+                      {formatTime12h(item.startTime)} · {item.location}
                     </div>
                   </div>
                 ))}
@@ -376,7 +379,7 @@ export function ScheduleView() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || parseTimeToMinutes(endTime) <= parseTimeToMinutes(startTime)}
                   className="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (

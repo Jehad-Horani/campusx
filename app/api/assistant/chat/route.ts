@@ -81,18 +81,33 @@ Use this real student data to provide personal, proactive recommendations when a
       parts: [{ text: message }],
     });
 
-    const response = await ai.models.generateContent({
-      model: "gemini-4-hydrogen",
-      contents,
-      config: {
-        systemInstruction: contextualPrompt,
-      },
-    });
+    let text = "";
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-4-hydrogen",
+        contents,
+        config: {
+          systemInstruction: contextualPrompt,
+        },
+      });
+      text = response.text || "";
+    } catch {
+      const fallbackResponse = await ai.models.generateContent({
+        model: "gemini-3.1-flash-lite",
+        contents,
+        config: {
+          systemInstruction: contextualPrompt,
+        },
+      });
+      text = fallbackResponse.text || "";
+    }
 
-    const text = response.text || "I am currently unable to generate a response. Please check back shortly.";
+    if (!text) {
+      text = "I am currently unable to generate a response. Please check back shortly.";
+    }
     return NextResponse.json({ text, isDemo: false });
   } catch (error: unknown) {
-    console.error("Gemini Assistant error:", error);
+    console.warn("Gemini Assistant fallback triggered:", error instanceof Error ? error.message : "Service fallback");
     const errMsg = error instanceof Error ? error.message : "Service fallback triggered";
     return NextResponse.json({
       text: getOfflineFallbackAnswer(""),

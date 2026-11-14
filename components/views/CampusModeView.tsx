@@ -10,6 +10,8 @@ import {
   decodeAsuClassroom,
   estimateWalkingMinutesToBuilding,
   findAsuBuilding,
+  formatTime12h,
+  getNextScheduledCourse,
   isInsideAsuCampus,
 } from '@/lib/asu-campus';
 import {
@@ -57,7 +59,8 @@ export function CampusModeView() {
   const [buildingSearch, setBuildingSearch] = useState('');
 
   const decodedQuery = decodeAsuClassroom(roomQuery);
-  const nextCourse = courses[0];
+  const nextScheduled = useMemo(() => getNextScheduledCourse(courses), [courses]);
+  const nextCourse = nextScheduled?.course || courses[0];
   const nextDecoded = nextCourse ? decodeAsuClassroom(nextCourse.classroom) : null;
   const targetBldCode = nextDecoded?.isValid ? nextDecoded.buildingCode : '1';
 
@@ -635,7 +638,7 @@ export function CampusModeView() {
                       <div>
                         <div className="font-bold text-white">{s.title}</div>
                         <div className="text-cyan-400 font-mono text-[11px] mt-0.5">
-                          {s.startTime} - {s.endTime}
+                          {formatTime12h(s.startTime)} - {formatTime12h(s.endTime)}
                         </div>
                       </div>
                       {dec.isValid && (

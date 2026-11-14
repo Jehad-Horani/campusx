@@ -36,8 +36,7 @@ Respond strictly in valid JSON with:
 - confidence: (number between 0.70 and 0.99)
 - reasoning: (string) 1-2 concise sentences explaining why this priority and department were chosen.`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-4-hydrogen',
+    const requestPayload = {
       contents: [
         {
           role: 'user',
@@ -56,7 +55,20 @@ Respond strictly in valid JSON with:
         systemInstruction: systemPrompt,
         responseMimeType: 'application/json',
       },
-    });
+    };
+
+    let response;
+    try {
+      response = await ai.models.generateContent({
+        model: 'gemini-4-hydrogen',
+        ...requestPayload,
+      });
+    } catch {
+      response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite',
+        ...requestPayload,
+      });
+    }
 
     const responseText = response.text || '{}';
     let parsed;

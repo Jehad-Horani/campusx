@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '@/lib/store';
 import { ScheduleItem, ScheduleItemType } from '@/types/campusx';
-import { decodeAsuClassroom } from '@/lib/asu-campus';
+import { decodeAsuClassroom, formatTime12h, parseTimeToMinutes } from '@/lib/asu-campus';
 import { CampusModeCard } from '@/components/CampusModeCard';
 import {
   Calendar,
@@ -78,7 +78,17 @@ export function StudentDashboardView() {
     : '';
 
   const upcomingTasks = schedule.filter((item) => item.type !== 'class');
-  const todayLectures = courses.slice(0, 4);
+
+  const todayCode = nowMs
+    ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(nowMs).getDay()]
+    : '';
+  const todayCoursesFiltered = todayCode
+    ? courses.filter((c) => c.days.length === 0 || c.days.includes(todayCode))
+    : courses;
+  const todayLectures = (todayCoursesFiltered.length > 0 ? todayCoursesFiltered : courses)
+    .slice()
+    .sort((a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime))
+    .slice(0, 4);
 
   const handleQuickTaskSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -263,7 +273,7 @@ export function StudentDashboardView() {
                       <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-2">
                         <span className="flex items-center gap-1">
                           <Clock className="w-3 h-3 text-cyan-400" />
-                          {item.date} · {item.startTime}
+                          {item.date} · {formatTime12h(item.startTime)}
                         </span>
                         <span className="flex items-center gap-1">
                           <MapPin className="w-3 h-3 text-emerald-400" />
@@ -325,50 +335,59 @@ export function StudentDashboardView() {
               <div className="py-8 text-center text-xs text-slate-400">
                 Generating AI course recommendations...
               </div>
-            ) : courseRecommendations.length === 0 ? (
+            ) : courses.length === 0 || courseRecommendations.filter((g) => courses.some((c) => c.courseName.trim().toLowerCase() === g.courseName.trim().toLowerCase())).length === 0 ? (
               <div className="py-8 text-center text-xs text-slate-400">
                 Add courses to see AI external recommendations.
               </div>
             ) : (
               <div className="space-y-2.5">
-                {courseRecommendations.slice(0, 2).map((group) => {
-                  const topDuring = group.duringSemester[0];
-                  const topPost = group.postSemester[0];
-                  return (
-                    <div
-                      key={group.courseCode}
-                      onClick={() => setActiveView('recommended-courses')}
-                      className="p-3.5 rounded-2xl bg-[#080B14]/70 border border-white/10 hover:border-purple-500/40 transition-all cursor-pointer space-y-2"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-extrabold text-white truncate">
-                          {group.courseName}
-                        </span>
-                        <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 shrink-0">
-                          {group.courseCode}
-                        </span>
+                {courseRecommendations
+                  .filter((g) =>
+                    courses.some(
+                      (c) => c.courseName.trim().toLowerCase() === g.courseName.trim().toLowerCase()
+                    )
+                  )
+                  .slice(0, 2)
+                  .map((group, idx) => {
+                    const topDuring = group.duringSemester[0];
+                    const topPost = group.postSemester[0];
+                    return (
+                      <div
+                        key={`${group.courseName}-${idx}`}
+                        onClick={() => setActiveView('recommended-courses')}
+                        className="p-3.5 rounded-2xl bg-[#080B14]/70 border border-white/10 hover:border-purple-500/40 transition-all cursor-pointer space-y-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-extrabold text-white truncate">
+                            {group.courseName}
+                          </span>
+                          {group.courseCode && (
+                            <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 shrink-0">
+                              {group.courseCode}
+                            </span>
+                          )}
+                        </div>
+                        {topDuring && (
+                          <div className="text-[11px] text-slate-300 flex items-center justify-between gap-2">
+                            <span className="truncate">
+                              <span className="text-cyan-400 font-bold">During: </span>
+                              {topDuring.title}
+                            </span>
+                            <ExternalLink className="w-3 h-3 text-slate-500 shrink-0" />
+                          </div>
+                        )}
+                        {topPost && (
+                          <div className="text-[11px] text-slate-300 flex items-center justify-between gap-2">
+                            <span className="truncate">
+                              <span className="text-purple-400 font-bold">Post: </span>
+                              {topPost.title}
+                            </span>
+                            <ExternalLink className="w-3 h-3 text-slate-500 shrink-0" />
+                          </div>
+                        )}
                       </div>
-                      {topDuring && (
-                        <div className="text-[11px] text-slate-300 flex items-center justify-between gap-2">
-                          <span className="truncate">
-                            <span className="text-cyan-400 font-bold">During: </span>
-                            {topDuring.title}
-                          </span>
-                          <ExternalLink className="w-3 h-3 text-slate-500 shrink-0" />
-                        </div>
-                      )}
-                      {topPost && (
-                        <div className="text-[11px] text-slate-300 flex items-center justify-between gap-2">
-                          <span className="truncate">
-                            <span className="text-purple-400 font-bold">Post: </span>
-                            {topPost.title}
-                          </span>
-                          <ExternalLink className="w-3 h-3 text-slate-500 shrink-0" />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
             )}
           </div>
@@ -409,8 +428,12 @@ export function StudentDashboardView() {
                   className="p-3.5 rounded-2xl bg-[#080B14]/70 border border-white/10 space-y-1.5"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-[10px] font-bold text-cyan-400">{c.courseCode}</span>
-                    <span className="font-mono text-[11px] text-slate-300">{c.startTime} - {c.endTime}</span>
+                    <span className="font-mono text-[10px] font-bold text-cyan-400">
+                      {c.courseCode || c.days.join('/')}
+                    </span>
+                    <span className="font-mono text-[11px] text-slate-300">
+                      {formatTime12h(c.startTime)} - {formatTime12h(c.endTime)}
+                    </span>
                   </div>
                   <div className="text-xs font-bold text-white truncate">{c.courseName}</div>
                   <div className="text-[11px] text-emerald-300 flex items-center gap-1 truncate">
