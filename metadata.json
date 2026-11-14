@@ -1,0 +1,6 @@
+{
+  "name": "CampusX — Smart University Platform",
+  "description": "Next-generation smart university ecosystem for Applied Science Private University (ASU). Campus Mode, Offline-first academic tools, AI assistant, mental health support, and community service hub.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

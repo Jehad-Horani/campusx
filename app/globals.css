@@ -1,0 +1,137 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+@layer base {
+  :root {
+    --bg-primary: #080B14;
+    --bg-secondary: #101525;
+    --bg-card: #141C2D;
+    --bg-elevated: #1A2438;
+    --cyan-primary: #35C8FF;
+    --aqua: #5CEBFF;
+    --blue-electric: #5B7CFF;
+    --purple: #8B35FF;
+    --text-primary: #F5F7FF;
+    --text-secondary: #A3AEC2;
+    --border-subtle: rgba(255, 255, 255, 0.08);
+  }
+
+  * {
+    border-color: var(--border-subtle);
+  }
+
+  body {
+    background-color: #080B14;
+    color: #F5F7FF;
+    font-family: 'Plus Jakarta Sans', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+}
+
+/* Hide Next.js dev indicator badge in the corner completely */
+nextjs-portal,
+[data-nextjs-toast],
+[data-nextjs-dialog-overlay],
+#__next-build-watcher,
+#nextjs-dev-indicator,
+[data-next-badge],
+.nextjs-toast-errors-parent,
+[class*="nextjs-toast"],
+[class*="dev-indicator"],
+[data-nextjs-dev-indicator],
+div:has(> a[href*="nextjs.org"]),
+a[href*="nextjs.org"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Custom scrollbar for dark tech aesthetic */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #080B14;
+}
+::-webkit-scrollbar-thumb {
+  background: #1A2438;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #35C8FF;
+}
+
+/* Safe area insets for mobile notches & navigation */
+.pb-safe {
+  padding-bottom: max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem));
+}
+.pt-safe {
+  padding-top: max(1rem, env(safe-area-inset-top, 0px));
+}
+
+/* Hide scrollbar utility for clean mobile carousels */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Prevent auto zoom on iOS inputs */
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Touch feedback and mobile smoothness */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Glassmorphism subtle surface */
+.glass-surface {
+  background: rgba(20, 28, 45, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-nav {
+  background: rgba(8, 11, 20, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Gradient text */
+.text-gradient-brand {
+  background: linear-gradient(135deg, #35C8FF 0%, #5CEBFF 30%, #5B7CFF 70%, #8B35FF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gradient-border-glow {
+  position: relative;
+}
+.gradient-border-glow::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(53, 200, 255, 0.4), rgba(139, 53, 255, 0.4));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}

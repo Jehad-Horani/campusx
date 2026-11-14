@@ -1,0 +1,1360 @@
+# CAMPUSX — THE NEXT GENERATION SMART UNIVERSITY PLATFORM
+
+## 1. YOUR ROLE AND MISSION
+
+You are not simply a website developer.
+
+You are an elite product design team consisting of:
+- A world-class Senior UI/UX Designer.
+- A Senior Frontend Architect.
+- A Premium SaaS Product Designer.
+- A Mobile-First Experience Specialist.
+- A Full-Stack Software Engineer.
+- An Accessibility and Performance Engineer.
+
+Your mission is to design and build CAMPUSX, a premium, intelligent, student-centered university platform for Applied Science Private University (ASU), Jordan.
+
+I have attached the official CampusX logo, project documentation, graduation project report, system diagrams, and presentation.
+
+You MUST study these materials before making design or implementation decisions.
+
+The documents are the primary source of truth for the project's requirements, functionality, actors, and relationships.
+
+Do not create a generic university website.
+
+Do not create a generic admin dashboard.
+
+Do not create a collection of unrelated pages.
+
+Build a cohesive, premium, intelligent digital ecosystem that feels like a real commercial technology product.
+
+The final result should be visually impressive, technically structured, highly interactive, and exceptionally optimized for smartphones.
+
+**The mobile experience is the highest design priority.**
+
+---
+
+# 2. PRODUCT IDENTITY
+
+Product Name: CampusX
+
+Product Category: Smart University Platform / EdTech / Student Digital Ecosystem.
+
+University: Applied Science Private University (ASU), Amman, Jordan.
+
+Core Philosophy:
+
+"Your entire university life. One intelligent experience."
+
+CampusX is designed to become the student's daily digital companion.
+
+It combines:
+- Academic management.
+- Real-time campus assistance.
+- Offline accessibility.
+- AI-powered university assistance.
+- Mental health support.
+- Community service opportunities.
+- Personalized student dashboards.
+- University administration.
+
+The platform must feel intelligent, modern, human-centered, and effortless to use.
+
+It must not look like an ordinary university portal.
+
+---
+
+# 3. BRAND IDENTITY AND VISUAL DIRECTION
+
+Use the uploaded official CampusX logo as the main brand asset.
+
+IMPORTANT:
+- Preserve the original logo.
+- Do not redesign it.
+- Do not distort its proportions.
+- Do not replace it with a random AI-generated logo.
+- Use the original logo in the navigation, authentication pages, loading screens, and branding elements.
+- Create a coherent visual identity around its actual colors.
+
+## Visual Style
+
+Create a premium dark interface inspired by high-end technology products.
+
+The design direction should combine:
+- Apple-level attention to detail.
+- Linear-style clean interfaces.
+- Modern SaaS dashboards.
+- Futuristic AI interfaces.
+- Subtle glassmorphism.
+- Sophisticated dark surfaces.
+- Beautiful gradients.
+- Carefully controlled neon lighting.
+
+## Color Direction
+
+Use the following palette as the initial design direction:
+
+Primary background: #080B14
+
+Secondary background: #101525
+
+Card background: #141C2D
+
+Elevated surfaces: #1A2438
+
+Primary cyan: #35C8FF
+
+Aqua: #5CEBFF
+
+Electric blue: #5B7CFF
+
+Purple: #8B35FF
+
+Primary text: #F5F7FF
+
+Secondary text: #A3AEC2
+
+Borders: Subtle translucent white.
+
+Use gradients inspired by the official logo.
+
+Suggested main gradient:
+
+#35C8FF → #5CEBFF → #5B7CFF → #8B35FF
+
+Use purple and cyan strategically.
+
+Do not make every element glow.
+
+The design must remain sophisticated, readable, and comfortable for long sessions.
+
+## Typography
+
+Use a modern, highly readable font.
+
+Preferred:
+- Inter
+- Geist
+- Manrope
+
+Typography must have:
+- Clear hierarchy.
+- Excellent readability on mobile.
+- Consistent font weights.
+- Comfortable line heights.
+- Proper Arabic typography support.
+
+Support both Arabic and English layouts.
+
+Arabic must use proper RTL direction, not merely right-aligned English layouts.
+
+---
+
+# 4. MOBILE-FIRST DESIGN — ABSOLUTE PRIORITY
+
+This is the most important section.
+
+Do not design a desktop website and then shrink it for mobile.
+
+Design the entire experience from the smallest smartphone screen upward.
+
+Target screen widths:
+- 320px
+- 360px
+- 375px
+- 390px
+- 414px
+- 430px
+- 768px
+- 1024px
+- 1440px
+- 1920px
+
+Every page must work perfectly across these sizes.
+
+## Mobile Requirements
+
+1. Use a dedicated mobile navigation experience.
+2. Use a beautiful fixed bottom navigation bar for the main student sections.
+3. Ensure the bottom navigation never covers important content.
+4. Use mobile-friendly cards with carefully designed spacing.
+5. Use appropriate touch targets, preferably at least 44px.
+6. Never allow horizontal overflow.
+7. Avoid tiny text.
+8. Avoid unnecessarily complex desktop-style tables.
+9. Convert complex tables into mobile cards or horizontally manageable layouts.
+10. Use responsive typography and spacing.
+11. Make all dialogs and modals usable on mobile.
+12. Use bottom sheets where appropriate.
+13. Ensure forms are easy to complete using a mobile keyboard.
+14. Optimize charts and data visualizations for small screens.
+15. Use safe-area insets for modern smartphones.
+16. Make scrolling smooth and natural.
+17. Keep important actions within easy thumb reach.
+18. Avoid excessive animations that affect performance.
+
+## Mobile Navigation
+
+Create a beautiful floating or integrated bottom navigation bar.
+
+Suggested primary items:
+- Home
+- Campus
+- Schedule
+- Community
+- Profile
+
+Other features should be accessible through the dashboard and a well-organized navigation menu.
+
+Include a distinctive AI Assistant shortcut.
+
+The navigation should have:
+- Clear active states.
+- Beautiful icons.
+- Smooth transitions.
+- Subtle active indicators.
+- Proper accessibility.
+- No overcrowding.
+
+## Desktop Navigation
+
+Use a sophisticated collapsible sidebar.
+
+Include:
+- CampusX logo.
+- Main navigation.
+- Academic section.
+- Student support section.
+- Community section.
+- Profile and settings.
+- Notifications.
+- User information.
+
+The sidebar should be visually clean and easy to navigate.
+
+---
+
+# 5. APPLICATION STRUCTURE
+
+Build the application as a complete ecosystem with separate interfaces based on user roles.
+
+The main user roles are:
+
+1. Student.
+2. Administrator.
+3. Counselor / University Psychologist.
+
+Each role must have appropriate permissions and its own dashboard.
+
+Do not expose administrative or counselor information to student accounts.
+
+---
+
+# 6. AUTHENTICATION SYSTEM
+
+Create premium authentication pages.
+
+## Sign In
+
+Include:
+- CampusX logo.
+- Welcome message.
+- University email or ID field.
+- Password field.
+- Show/hide password.
+- Remember me.
+- Forgot password.
+- Sign-in button.
+- Sign-up link.
+
+## Sign Up
+
+Registration fields based on the project requirements:
+
+- Full name.
+- University ID.
+- Email.
+- Phone number.
+- Faculty / Department.
+- Academic year.
+- Password.
+- Confirm password.
+
+Requirements:
+- Validate all required fields.
+- Validate email format.
+- Ensure university ID uniqueness.
+- Ensure email uniqueness.
+- Validate password requirements.
+- Show understandable error messages.
+- Show loading and success states.
+
+## Additional Authentication
+
+Include:
+- Password recovery.
+- Password reset.
+- Logout.
+- Session handling.
+- Protected routes.
+- Role-based redirection.
+
+Create a premium experience, not a standard template login form.
+
+---
+
+# 7. STUDENT DASHBOARD — THE HEART OF CAMPUSX
+
+The dashboard is the most important page.
+
+It should feel like a personalized command center.
+
+It must immediately answer:
+
+"What matters to me today?"
+
+## Dashboard Header
+
+Display:
+- Personalized greeting.
+- Student name.
+- Current date.
+- Profile avatar.
+- Notification icon.
+- Search.
+- Language selector.
+- Online / Offline indicator.
+
+Example:
+
+"Good morning, Jihad."
+
+"Ready for another productive day?"
+
+Use actual dynamic dates and personalized user information, not hardcoded examples.
+
+## Main Dashboard Sections
+
+### A. Campus Mode Card
+
+A prominent, visually impressive card.
+
+Display:
+- Campus Mode status.
+- Next upcoming class.
+- Course name.
+- Instructor.
+- Building.
+- Classroom.
+- Class starting time.
+- Remaining time.
+- Estimated walking time.
+- Student status.
+
+Status types:
+- ON TIME.
+- TIGHT.
+- LATE.
+
+Use different visual states.
+
+Make this card one of the strongest visual elements on the dashboard.
+
+### B. Today's Overview
+
+Display:
+- Number of classes.
+- Upcoming exams.
+- Assignments.
+- Quizzes.
+- Free time.
+- Completed tasks.
+
+Use clean mini-stat cards.
+
+### C. What Matters Now
+
+An intelligent priority section.
+
+Show:
+- Upcoming lectures.
+- Urgent assignments.
+- Upcoming exams.
+- Schedule changes.
+- Important university announcements.
+
+Prioritize information based on date, time, and urgency.
+
+### D. GPA Overview
+
+Display:
+- Current cumulative GPA.
+- Semester GPA.
+- Academic progress.
+- Credit hours.
+- GPA calculator shortcut.
+
+Use a beautiful circular progress visualization where appropriate.
+
+### E. Upcoming Events
+
+Display community service opportunities.
+
+Show:
+- Event name.
+- Date.
+- Location.
+- Service points.
+- Registration status.
+
+### F. Quick Actions
+
+Provide shortcuts to:
+- GPA Calculator.
+- My Courses.
+- My Schedule.
+- Study Plan.
+- AI Assistant.
+- Mental Health Support.
+- Community Service.
+- University Information.
+
+### G. Offline Status
+
+Display:
+- Connection status.
+- Last synchronization time.
+- Cached data availability.
+- Sync status.
+
+Make offline status visible without dominating the dashboard.
+
+---
+
+# 8. CAMPUS MODE — THE SIGNATURE FEATURE
+
+Campus Mode is one of the most important differentiators of CampusX.
+
+It transforms the platform into a real-time campus companion.
+
+The interface should feel dynamic and context-aware.
+
+## Main Experience
+
+Display a prominent next-class card containing:
+
+- Course name.
+- Course code.
+- Instructor.
+- Building number.
+- Classroom.
+- Start time.
+- Remaining time.
+- Estimated walking time.
+- Student arrival status.
+
+Example:
+
+Next Class: Data Structures
+
+Starts in: 10 minutes
+
+Building: 2
+
+Room: 104
+
+Walking Time: 6 minutes
+
+Status: ON TIME
+
+These are demonstration values only.
+
+## Intelligent Status
+
+Calculate status using the available schedule and walking-time estimate.
+
+ON TIME:
+Enough time to reach the class.
+
+TIGHT:
+Limited time remains.
+
+LATE:
+The estimated arrival time is after the class start time.
+
+## Additional Sections
+
+- Today's classes.
+- Upcoming lectures.
+- Free time slots.
+- Upcoming quizzes.
+- Exam reminders.
+- Assignment deadlines.
+- Schedule changes.
+- Quick classroom information.
+
+## Location Awareness
+
+Design the interface to support location-based campus activation.
+
+Do not pretend that actual GPS positioning, indoor navigation, or walking-time calculation is implemented unless a real integration exists.
+
+If these integrations are unavailable, provide a clear demonstration mode and make the system architecture ready for future implementation.
+
+---
+
+# 9. OFFLINE MODE — OFFLINE-FIRST EXPERIENCE
+
+Offline Mode is a major technical feature.
+
+The application must be designed to remain useful when connectivity is weak or unavailable.
+
+## Offline Features
+
+The following information should be available from locally cached data:
+
+- Today's schedule.
+- Upcoming classes.
+- Classroom information.
+- Building information.
+- GPA calculator.
+- Saved assignments.
+- Deadlines.
+- Study plan.
+
+## Interface Requirements
+
+Display a beautiful but clear offline status banner.
+
+Example:
+
+"You're offline. Your saved academic information is still available."
+
+Also display:
+- Last successful sync.
+- Available offline sections.
+- Pending changes.
+- Synchronization status.
+
+## System Behavior
+
+When internet connection disappears:
+- Detect the connection loss.
+- Display an offline indicator.
+- Load previously cached information.
+- Preserve supported local actions.
+
+When internet returns:
+- Synchronize supported changes.
+- Prevent duplicate records.
+- Display synchronization success or failure.
+
+Use appropriate technologies such as:
+- Service Workers.
+- IndexedDB.
+- Cache API.
+- Background synchronization where supported.
+
+Do not claim offline functionality unless it is actually implemented and tested.
+
+---
+
+# 10. AI-POWERED UNIVERSITY ASSISTANT
+
+Create a premium AI chat experience.
+
+It should feel like an intelligent university assistant, not a basic messaging widget.
+
+## Interface
+
+Include:
+- Beautiful chat layout.
+- AI avatar and branding.
+- Conversation history.
+- Suggested questions.
+- Typing indicator.
+- Message timestamps.
+- Copy response.
+- Clear conversation.
+- Arabic / English support.
+- Responsive mobile chat interface.
+
+## Example Questions
+
+- Where is classroom 1B12?
+- When does registration start?
+- What are my upcoming classes?
+- How do I calculate my GPA?
+- Where can I contact university support?
+- How do I use Campus Mode?
+
+## Knowledge Areas
+
+The assistant should be able to answer based on approved university information about:
+
+- Campus locations.
+- Building numbers.
+- Classroom codes.
+- Registration dates.
+- University contacts.
+- University email benefits.
+- Academic services.
+- Platform navigation.
+
+## Important AI Rules
+
+- Never invent official university information.
+- Clearly distinguish confirmed information from unknown information.
+- Direct users to official university contacts when necessary.
+- Support Arabic and English naturally.
+- Respect user privacy.
+
+Use Gemini API when configured.
+
+Keep API keys on the server side, never expose them in frontend code.
+
+If the API is not configured, show a clearly identified demo mode rather than pretending to provide live AI responses.
+
+---
+
+# 11. MENTAL HEALTH SUPPORT — A HUMAN-CENTERED FEATURE
+
+This is one of the most important and sensitive parts of CampusX.
+
+The experience must feel calm, respectful, private, and supportive.
+
+Do not use aggressive neon effects or overwhelming visuals here.
+
+## Mental Health Landing Page
+
+Create:
+- Calm visual identity.
+- Welcoming message.
+- Privacy information.
+- Supportive introduction.
+- AI emotional support entry point.
+- Direct university psychologist contact.
+- Request support option.
+
+Example:
+
+"You don't have to figure everything out alone."
+
+"Your well-being matters."
+
+## AI Emotional Support
+
+Create a separate conversational experience.
+
+The assistant should:
+- Listen without judgment.
+- Respond with empathy.
+- Avoid diagnosing users.
+- Avoid pretending to replace a psychologist.
+- Encourage professional support when appropriate.
+
+## High-Risk Detection and Escalation
+
+The system must recognize potential indicators of self-harm or suicidal thoughts.
+
+When high-risk indicators appear:
+
+1. Stop treating the conversation as an ordinary chatbot interaction.
+2. Display a supportive and urgent message.
+3. Encourage immediate contact with qualified human support.
+4. Provide direct access to the university psychologist.
+5. Provide appropriate emergency guidance.
+6. Route a support request to the authorized university support team only according to approved policy and consent rules.
+
+Do not expose private mental health conversations to ordinary administrators.
+
+Use strict role-based access and data protection.
+
+Do not claim absolute confidentiality if escalation or data access may occur. Explain privacy limits clearly.
+
+This feature supports students; it does not replace professional medical or psychological care.
+
+---
+
+# 12. COMMUNITY SERVICE HUB
+
+Build a complete community engagement experience.
+
+This feature allows students to discover opportunities, register for events, and track community service points.
+
+## Community Landing Page
+
+Include:
+- Featured events.
+- Upcoming events.
+- Available opportunities.
+- Student participation.
+- Total service points.
+- Search.
+- Filters.
+- Categories.
+
+## Event Cards
+
+Each event card should display:
+- Event image.
+- Title.
+- Description.
+- Date.
+- Start and end time.
+- Location.
+- Service points.
+- Available status.
+- Registration button.
+
+## Event Details Page
+
+Include:
+- Full event description.
+- Event schedule.
+- Location.
+- Organizer.
+- Service points.
+- Registration status.
+- Registration action.
+
+## Student Event Submission
+
+Allow students or organizers to submit events.
+
+Fields:
+- Event title.
+- Description.
+- Date.
+- Time.
+- Location.
+- Service points.
+- Supporting information.
+
+Submitted events must remain pending until approved by an administrator.
+
+## Student Points
+
+Create a student points section displaying:
+- Total earned points.
+- Completed events.
+- Upcoming registered events.
+- Participation history.
+
+Do not fabricate confirmed participation or points.
+
+---
+
+# 13. ACADEMIC TOOLS
+
+Create a complete academic management section.
+
+## A. GPA Calculator
+
+Allow students to:
+- Add courses.
+- Enter course names.
+- Enter course codes.
+- Enter credit hours.
+- Select grades.
+- Remove courses.
+- Calculate semester GPA.
+- Calculate cumulative GPA when previous GPA information is provided.
+- Save calculations.
+- View calculation history.
+- Delete saved records.
+
+The calculation logic must be mathematically correct and clearly display the grading scale being used.
+
+Do not assume an official ASU grading scale unless provided.
+
+## B. Course Management
+
+Students should be able to:
+- Add courses.
+- Edit courses.
+- Delete courses.
+- View enrolled courses.
+- View course details.
+
+Course information:
+- Course name.
+- Course code.
+- Credit hours.
+- Instructor.
+- Lecture days.
+- Lecture time.
+- Building.
+- Classroom.
+
+## C. Schedule Management
+
+Create:
+- Daily schedule.
+- Weekly schedule.
+- Monthly overview where useful.
+- Class schedules.
+- Exam schedules.
+- Quiz schedules.
+- Assignment deadlines.
+
+Allow users to:
+- Add.
+- Edit.
+- Delete.
+- View schedule items.
+
+Use clear visual differentiation between classes, exams, quizzes, and assignments.
+
+## D. Study Plan
+
+Allow students to:
+- Upload study plans.
+- View uploaded plans.
+- Replace existing files.
+- Delete files.
+- Track completed courses where supported.
+- View remaining courses.
+- Monitor academic progress.
+
+The uploaded study plan should have a clean document viewer.
+
+---
+
+# 14. STUDENT PROFILE AND SETTINGS
+
+Create a complete personal profile.
+
+Include:
+- Profile picture.
+- Full name.
+- University ID.
+- Email.
+- Phone number.
+- Faculty.
+- Department.
+- Academic year.
+
+Allow students to update editable profile information.
+
+## Settings
+
+Include:
+- Account settings.
+- Password management.
+- Language.
+- Appearance.
+- Notification preferences.
+- Privacy preferences.
+- Session management.
+
+Support both Arabic and English.
+
+---
+
+# 15. ADMIN DASHBOARD
+
+Create a separate, professional administration interface.
+
+It should have a different information hierarchy from the student dashboard while maintaining the same brand identity.
+
+## Admin Overview
+
+Display:
+- Total registered students.
+- Total published events.
+- Pending event submissions.
+- Active announcements.
+- Recent platform activity.
+- System overview.
+
+Use realistic demo data, clearly identified as demo data.
+
+## Admin Modules
+
+### A. User Management
+- View students.
+- Search users.
+- View account information.
+- Manage authorized accounts.
+- Apply appropriate role permissions.
+
+### B. Community Events
+- View submitted events.
+- Approve events.
+- Reject events.
+- Edit events.
+- Publish events.
+- Delete outdated events.
+
+### C. University Information
+- Manage buildings.
+- Manage classrooms.
+- Manage contact information.
+- Update registration dates.
+- Manage university services.
+
+### D. Announcements
+- Create announcements.
+- Edit announcements.
+- Delete announcements.
+- Publish announcements.
+- Manage visibility.
+
+### E. AI Knowledge Base
+- Add FAQs.
+- Edit university information.
+- Remove outdated information.
+- Manage approved chatbot knowledge.
+
+### F. Notifications
+- Manage system notifications.
+- Publish academic announcements.
+- Manage relevant student alerts.
+
+All management operations must have appropriate confirmations, validation, loading states, and success/error feedback.
+
+---
+
+# 16. COUNSELOR DASHBOARD
+
+Build a separate protected dashboard for university counselors.
+
+The interface should be calm, professional, and privacy-focused.
+
+## Main Sections
+
+- Support overview.
+- Incoming support requests.
+- Request date and time.
+- Request status.
+- Priority indicators.
+- Authorized high-risk escalations.
+- Student contact information where permitted.
+
+## Request Management
+
+Counselors should be able to:
+- View authorized requests.
+- Review requests.
+- Update status.
+- Contact students.
+- Mark requests as handled.
+- Close requests.
+
+Only authorized counselor accounts should access sensitive support information.
+
+---
+
+# 17. NOTIFICATIONS AND SEARCH
+
+## Notifications
+
+Create a complete notification center.
+
+Support:
+- Upcoming classes.
+- Assignment deadlines.
+- Exam reminders.
+- Schedule updates.
+- Community event updates.
+- Event approval results.
+- Offline notifications.
+- Synchronization results.
+
+Include:
+- Read/unread states.
+- Notification timestamps.
+- Clear notification categories.
+
+## Global Search
+
+Add a useful global search experience.
+
+Students should be able to search for:
+- Courses.
+- Assignments.
+- Exams.
+- Schedule items.
+- Buildings.
+- Classrooms.
+- University services.
+- Contacts.
+- Community events.
+
+Display relevant results and helpful empty states.
+
+---
+
+# 18. UX DETAILS AND INTERACTIONS
+
+This is where the product should stand out.
+
+Do not build static screenshots disguised as a website.
+
+Every visible interactive element must have a meaningful action.
+
+Include:
+
+- Smooth page transitions.
+- Hover interactions on desktop.
+- Touch feedback on mobile.
+- Beautiful dropdown menus.
+- Working modals.
+- Responsive side panels.
+- Toast notifications.
+- Skeleton loading states.
+- Empty states.
+- Error states.
+- Success states.
+- Confirmation dialogs.
+- Form validation.
+- Search interactions.
+- Functional navigation.
+- Persistent preferences where appropriate.
+
+Use subtle animations.
+
+Recommended:
+- Framer Motion.
+- GSAP only where it provides real value.
+- CSS transitions for simple interactions.
+
+Animations should be smooth and restrained.
+
+Respect reduced-motion accessibility settings.
+
+Avoid:
+- Excessive particle effects.
+- Too many floating elements.
+- Unnecessary animations.
+- Overloaded gradients.
+- Excessive glassmorphism.
+- Tiny typography.
+- Generic template layouts.
+
+---
+
+# 19. TECHNICAL REQUIREMENTS
+
+Use a modern and maintainable frontend architecture.
+
+Preferred stack:
+
+- React.
+- Next.js where supported by the selected environment.
+- JavaScript, not TypeScript.
+- Tailwind CSS.
+- Lucide icons.
+- Framer Motion for UI animations.
+- Supabase / PostgreSQL as the proposed backend.
+- Gemini API for AI integration.
+
+Important: These are the preferred implementation directions. Check the actual environment and existing project setup before selecting or changing infrastructure.
+
+## Code Quality
+
+- Use reusable components.
+- Keep code organized.
+- Separate UI from business logic.
+- Create reusable hooks where appropriate.
+- Use consistent naming conventions.
+- Avoid duplicated components.
+- Use clean routing.
+- Implement protected routes.
+- Implement role-based access.
+- Validate data.
+- Handle errors properly.
+- Keep secrets out of frontend code.
+
+Do not replace an existing working backend with mock data.
+
+If an existing project or codebase is provided, inspect it first and preserve working functionality.
+
+---
+
+# 20. DATABASE AND DATA STRUCTURE
+
+Use the attached ER diagram and project report as references.
+
+The system must be designed around the following logical entities:
+
+- Users.
+- Students.
+- Administrators.
+- Counselors.
+- Courses.
+- Schedules.
+- GPA Records.
+- Assignments.
+- Exams.
+- Notifications.
+- Study Plans.
+- Community Events.
+- Event Registrations.
+- Community Service Points.
+- University Information.
+- Announcements.
+- AI Chatbot Conversations.
+- AI Chatbot Messages.
+- Mental Health Support Requests.
+- Counselor Reviews.
+
+Maintain correct relationships and ownership.
+
+Important security requirements:
+- Students must only access their own private academic information.
+- Admins must have authorized administrative permissions.
+- Counselors must only access authorized support records.
+- Mental health information must be protected separately.
+- Apply appropriate database access policies and validation.
+
+Do not invent production database credentials or pretend that an external database is connected.
+
+If no backend is configured, build a clear demonstration layer with realistic sample data and a structure ready for real backend integration.
+
+---
+
+# 21. DESIGN SYSTEM AND COMPONENT LIBRARY
+
+Build a consistent design system before creating individual pages.
+
+Create reusable components for:
+
+- Buttons.
+- Inputs.
+- Select fields.
+- Cards.
+- Stat cards.
+- Navigation.
+- Sidebar.
+- Bottom navigation.
+- Modals.
+- Bottom sheets.
+- Notifications.
+- Avatars.
+- Badges.
+- Status indicators.
+- Progress bars.
+- Charts.
+- Event cards.
+- Schedule cards.
+- Empty states.
+- Loading skeletons.
+
+Maintain consistent:
+- Spacing.
+- Typography.
+- Colors.
+- Border radii.
+- Shadows.
+- Gradients.
+- Icon sizes.
+- Interaction states.
+
+All components must support responsive layouts.
+
+---
+
+# 22. ACCESSIBILITY AND PERFORMANCE
+
+The platform must:
+- Load efficiently.
+- Avoid unnecessary dependencies.
+- Use optimized images.
+- Avoid layout shifts.
+- Support keyboard navigation.
+- Have visible focus states.
+- Maintain sufficient contrast.
+- Use semantic HTML.
+- Support screen readers.
+- Respect reduced-motion preferences.
+- Work on modern mobile browsers.
+
+Test real mobile layouts rather than relying only on desktop preview.
+
+---
+
+# 23. REQUIRED PAGES
+
+Create the following complete page structure.
+
+### Public Pages
+1. Landing / Welcome Page.
+2. Sign In.
+3. Sign Up.
+4. Forgot Password.
+
+### Student Pages
+5. Student Dashboard.
+6. Campus Mode.
+7. Offline Mode.
+8. AI University Assistant.
+9. Mental Health Support.
+10. Community Service Hub.
+11. Event Details.
+12. My Registered Events.
+13. GPA Calculator.
+14. My Courses.
+15. My Schedule.
+16. Exams and Assignments.
+17. Study Plan.
+18. Notifications.
+19. Student Profile.
+20. Settings.
+
+### Admin Pages
+21. Admin Dashboard.
+22. User Management.
+23. Event Management.
+24. University Information Management.
+25. Announcements Management.
+26. AI Knowledge Base Management.
+27. Notification Management.
+
+### Counselor Pages
+28. Counselor Dashboard.
+29. Support Requests.
+30. Support Request Details.
+
+Each page must be properly designed and connected to the overall navigation.
+
+Do not leave pages as empty placeholders.
+
+---
+
+# 24. LANDING PAGE EXPERIENCE
+
+If you create a public landing page, make it exceptionally impressive.
+
+The first screen should immediately communicate the product.
+
+Suggested headline:
+
+"University life, intelligently connected."
+
+Supporting text:
+
+"Everything you need to navigate your academic journey, manage your campus life, and stay connected — all in one place."
+
+Include:
+- Official CampusX branding.
+- Strong hero section.
+- A beautiful dashboard preview.
+- Product feature sections.
+- Campus Mode showcase.
+- AI Assistant showcase.
+- Academic Tools showcase.
+- Student Well-being showcase.
+- Community Service showcase.
+- Clear Sign In / Get Started actions.
+
+Use realistic product interface previews rather than random stock images.
+
+Make the mobile landing page equally impressive.
+
+---
+
+# 25. IMPLEMENTATION STRATEGY
+
+Work in the following order:
+
+PHASE 1 — UNDERSTAND
+
+Study the attached logo, documents, system diagrams, and project requirements.
+
+Identify the system modules, users, relationships, and important workflows.
+
+PHASE 2 — DESIGN
+
+Establish the design system.
+
+Design the mobile experience first.
+
+Create the student dashboard and navigation before moving to secondary pages.
+
+PHASE 3 — BUILD
+
+Build the complete application structure.
+
+Implement shared components and reusable layouts.
+
+Develop the core student features.
+
+Then develop administration and counselor interfaces.
+
+PHASE 4 — FUNCTIONALITY
+
+Connect navigation, forms, calculations, filters, search, notifications, and user interactions.
+
+Implement real functionality where the environment supports it.
+
+Clearly identify demo functionality and external integrations that still require configuration.
+
+PHASE 5 — TESTING
+
+Test all pages at different screen sizes.
+
+Check:
+- Navigation.
+- Authentication flows.
+- Forms.
+- GPA calculations.
+- Schedule behavior.
+- Role-based access.
+- Mobile responsiveness.
+- Arabic RTL.
+- Offline states.
+- Loading and error states.
+
+Fix all visible layout issues.
+
+---
+
+# 26. FINAL QUALITY EXPECTATIONS
+
+The finished product should look and feel like a premium technology startup product.
+
+The mobile experience must be exceptional.
+
+I want a design that makes someone open the website and immediately say:
+
+"This is not a normal university website."
+
+It should feel:
+- Premium.
+- Intelligent.
+- Modern.
+- Futuristic.
+- Human-centered.
+- Fast.
+- Professional.
+- Extremely polished.
+
+Do not sacrifice usability for visual effects.
+
+Do not sacrifice mobile responsiveness for desktop aesthetics.
+
+Do not create fake functionality.
+
+Do not use generic dashboard templates.
+
+Do not stop after creating the homepage.
+
+Build a cohesive product with consistent design across all modules.
+
+## MOST IMPORTANT FINAL INSTRUCTION
+
+Prioritize the following three things above everything else:
+
+1. An extraordinary mobile-first UI/UX experience.
+2. A consistent and recognizable CampusX visual identity based on the official logo.
+3. A fully connected and logically structured student platform.
+
+Start by analyzing all attached materials, then establish the design system and build the application.
+
+Make thoughtful design decisions independently.
+
+Do not ask me to approve every small design decision.
+
+Your objective is to create the strongest possible version of CampusX.
