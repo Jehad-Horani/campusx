@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useRef, useState } from 'react';
+import { motion } from 'motion/react';
 import { useStore } from '@/lib/store';
 import {
   ASU_AERIAL_MAP_IMAGE,
@@ -10,9 +11,12 @@ import {
   decodeAsuClassroom,
   estimateWalkingMinutesToBuilding,
   findAsuBuilding,
+  formatDistance,
+  formatMinutesToHours,
   formatTime12h,
   getNextScheduledCourse,
   isInsideAsuCampus,
+  projectGpsToMapXY,
 } from '@/lib/asu-campus';
 import {
   Navigation,
@@ -29,11 +33,42 @@ import {
   RotateCcw,
   Route,
   Sparkles,
+  Sun,
+  Moon,
+  CloudSun,
+  Cloud,
+  CloudRain,
+  CloudLightning,
+  CloudFog,
+  Snowflake,
+  Droplets,
+  Wind,
+  RefreshCw,
+  Radio,
 } from 'lucide-react';
 
 type CategoryFilter = 'all' | AsuBuilding['category'];
 
 const SAMPLE_ROOM_CODES = ['7106', '1B12', '14203', '21105', 'G/B12'];
+
+function WeatherStatusIcon({
+  code,
+  isDay,
+  className,
+}: {
+  code?: number;
+  isDay?: boolean;
+  className?: string;
+}) {
+  if (typeof code !== 'number') return <CloudSun className={className} />;
+  if (code >= 95) return <CloudLightning className={className} />;
+  if (code >= 71 && code <= 77) return <Snowflake className={className} />;
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return <CloudRain className={className} />;
+  if (code === 45 || code === 48) return <CloudFog className={className} />;
+  if (code === 3) return <Cloud className={className} />;
+  if (code === 1 || code === 2) return <CloudSun className={className} />;
+  return isDay === false ? <Moon className={className} /> : <Sun className={className} />;
+}
 
 export function CampusModeView() {
   const {
@@ -47,6 +82,7 @@ export function CampusModeView() {
     walkingSpeed,
     setWalkingSpeed,
     campusWeather,
+    refreshCampusWeather,
     t,
   } = useStore();
 
@@ -57,6 +93,7 @@ export function CampusModeView() {
   const [zoom, setZoom] = useState<number>(1);
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [buildingSearch, setBuildingSearch] = useState('');
+  const [isRefreshingWeather, setIsRefreshingWeather] = useState(false);
 
   const decodedQuery = decodeAsuClassroom(roomQuery);
   const nextScheduled = useMemo(() => getNextScheduledCourse(courses), [courses]);
@@ -67,6 +104,12 @@ export function CampusModeView() {
   const campusCheck = userCoordinates
     ? isInsideAsuCampus(userCoordinates.lat, userCoordinates.lng)
     : null;
+  const isInsideCampus = Boolean(campusCheck?.inside);
+
+  const userMapPos = useMemo(() => {
+    if (!userCoordinates || !campusCheck?.inside) return null;
+    return projectGpsToMapXY(userCoordinates.lat, userCoordinates.lng);
+  }, [userCoordinates, campusCheck]);
 
   const originBuilding = useMemo(() => {
     if (campusCheck?.inside && campusCheck.nearestBuilding) {
@@ -122,7 +165,19 @@ export function CampusModeView() {
   const handleZoomIn = () => setZoom((z) => Math.min(2, Number((z + 0.5).toFixed(1))));
   const handleZoomOut = () => setZoom((z) => Math.max(1, Number((z - 0.5).toFixed(1))));
 
-  const showWalkingRoute = originBuilding.code !== selectedBuilding.code;
+  const handleRefreshWeather = async () => {
+    if (isRefreshingWeather) return;
+    setIsRefreshingWeather(true);
+    try {
+      await refreshCampusWeather();
+    } finally {
+      setIsRefreshingWeather(false);
+    }
+  };
+
+  const routeStartX = userMapPos ? userMapPos.mapX : originBuilding.mapX;
+  const routeStartY = userMapPos ? userMapPos.mapY : originBuilding.mapY;
+  const showWalkingRoute = userMapPos !== null || originBuilding.code !== selectedBuilding.code;
 
   return (
     <div className="space-y-6 pb-8 animate-in fade-in duration-200">
@@ -132,6 +187,12 @@ export function CampusModeView() {
           <div className="text-xs font-semibold text-cyan-400 mb-1 flex items-center gap-1.5">
             <Compass className="w-3.5 h-3.5" />
             <span>ASU Real-Time Campus Navigation</span>
+            {isInsideCampus && (
+              <span className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 text-[10px] font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                ON CAMPUS
+              </span>
+            )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             {t.campusMode.title}
@@ -161,44 +222,126 @@ export function CampusModeView() {
         </div>
       </div>
 
-      {/* Campus GPS & Weather Banner */}
-      <div className="p-4 rounded-2xl bg-[#101525] border border-cyan-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-300 font-bold font-mono shrink-0 tabular-nums">
-            {campusWeather.temperatureC}°C
+      {/* Real-Time ASU Campus Weather + Live Inside-Campus Geofence Banner */}
+      <motion.div
+        animate={
+          isInsideCampus
+            ? {
+                boxShadow: [
+                  '0 0 0 1px rgba(16, 185, 129, 0.35), 0 10px 30px -10px rgba(16, 185, 129, 0.2)',
+                  '0 0 0 1px rgba(34, 211, 238, 0.55), 0 12px 36px -8px rgba(34, 211, 238, 0.3)',
+                  '0 0 0 1px rgba(16, 185, 129, 0.35), 0 10px 30px -10px rgba(16, 185, 129, 0.2)',
+                ],
+              }
+            : undefined
+        }
+        transition={isInsideCampus ? { duration: 3.2, repeat: Infinity, ease: 'easeInOut' } : undefined}
+        className={`relative overflow-hidden p-4 sm:p-5 rounded-3xl border flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 text-xs ${
+          isInsideCampus
+            ? 'bg-gradient-to-r from-emerald-950/60 via-[#0E202B] to-cyan-950/60 border-emerald-400/50'
+            : 'bg-[#101525] border-cyan-500/25'
+        }`}
+      >
+        {isInsideCampus && (
+          <motion.div
+            aria-hidden
+            animate={{ x: ['-100%', '220%'] }}
+            transition={{ duration: 4.8, repeat: Infinity, ease: 'linear' }}
+            className="pointer-events-none absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-emerald-300/12 to-transparent skew-x-12"
+          />
+        )}
+
+        <div className="relative z-10 flex items-start sm:items-center gap-3.5">
+          <div
+            className={`w-14 h-14 rounded-2xl border flex flex-col items-center justify-center shrink-0 ${
+              isInsideCampus
+                ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-200'
+                : 'bg-cyan-500/15 border-cyan-500/30 text-cyan-300'
+            }`}
+          >
+            <WeatherStatusIcon
+              code={campusWeather.weatherCode}
+              isDay={campusWeather.isDay}
+              className="w-5 h-5 text-amber-300 mb-0.5"
+            />
+            <span className="font-extrabold font-mono text-sm tabular-nums leading-none">
+              {campusWeather.temperatureC}°C
+            </span>
           </div>
-          <div>
-            <div className="text-white font-bold flex flex-wrap items-center gap-2">
+
+          <div className="space-y-1">
+            <div className="text-white font-bold flex flex-wrap items-center gap-2 text-xs sm:text-sm">
               <span>ASU Campus — Shafa Badran, Amman</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/15 text-cyan-200 border border-cyan-500/30">
+                {campusWeather.condition}
+                {campusWeather.isLive ? ' · Live' : ''}
+              </span>
               {campusCheck && (
                 <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                     campusCheck.inside
-                      ? 'bg-emerald-500/20 text-emerald-300'
-                      : 'bg-amber-500/20 text-amber-300'
+                      ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400/40'
+                      : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
                   }`}
                 >
+                  {campusCheck.inside && <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />}
                   {campusCheck.inside
-                    ? 'Inside Campus'
-                    : `${(campusCheck.distanceFromCenterMeters / 1000).toFixed(1)} km away`}
+                    ? 'You Are Inside ASU Campus'
+                    : `${(campusCheck.distanceFromCenterMeters / 1000).toFixed(2)} km away`}
                 </span>
               )}
             </div>
-            <p className="text-slate-400 text-[11px] mt-0.5">
+
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-300">
+              {typeof campusWeather.feelsLikeC === 'number' && (
+                <span className="font-mono">Feels like {campusWeather.feelsLikeC}°C</span>
+              )}
+              {typeof campusWeather.humidity === 'number' && (
+                <span className="inline-flex items-center gap-1">
+                  <Droplets className="w-3 h-3 text-cyan-400" />
+                  <span>{campusWeather.humidity}% humidity</span>
+                </span>
+              )}
+              {typeof campusWeather.windKmh === 'number' && (
+                <span className="inline-flex items-center gap-1">
+                  <Wind className="w-3 h-3 text-sky-400" />
+                  <span>{campusWeather.windKmh} km/h wind</span>
+                </span>
+              )}
+            </div>
+
+            <p className="text-slate-400 text-[11px]">
               {campusCheck
-                ? `Nearest building: ${campusCheck.nearestBuilding.nameEn} (${campusCheck.distanceToNearestBuildingMeters} m)`
-                : 'Allow location access to compute live walking time inside ASU campus.'}
+                ? campusCheck.inside
+                  ? `Live position pinned on map · Nearest building: Bldg ${campusCheck.nearestBuilding.code} (${campusCheck.nearestBuilding.nameEn}, ${campusCheck.distanceToNearestBuildingMeters} m)`
+                  : `Nearest ASU point: Bldg ${campusCheck.nearestBuilding.code} (${campusCheck.nearestBuilding.nameEn}) · ${campusWeather.advisory || ''}`
+                : campusWeather.advisory ||
+                  'Allow location access to pinpoint yourself on the ASU campus map and measure real distances.'}
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="relative z-10 flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleRefreshWeather}
+            disabled={isRefreshingWeather}
+            title="Refresh live weather"
+            className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-cyan-400 ${isRefreshingWeather ? 'animate-spin' : ''}`} />
+            <span>Weather</span>
+          </button>
           <button
             onClick={requestLocationAccess}
-            className="px-3.5 py-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer border ${
+              isInsideCampus
+                ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border-emerald-400/40'
+                : 'bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border-cyan-500/30'
+            }`}
           >
             <LocateFixed className="w-3.5 h-3.5" />
-            <span>{locationPermissionStatus === 'granted' ? 'Refresh GPS' : 'Detect My Location'}</span>
+            <span>{locationPermissionStatus === 'granted' ? 'Update GPS' : 'Detect My Location'}</span>
           </button>
           <a
             href={ASU_CAMPUS_MAPS_URL}
@@ -210,7 +353,7 @@ export function CampusModeView() {
             <span>Google Maps</span>
           </a>
         </div>
-      </div>
+      </motion.div>
 
       {/* ASU CLASSROOM & BUILDING DECODER */}
       <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-[#101525] via-[#141C2D] to-[#1A2438] border border-cyan-500/30 space-y-4">
@@ -281,31 +424,46 @@ export function CampusModeView() {
       {/* INTERACTIVE AERIAL CAMPUS MAP + DIRECTORY */}
       <div ref={mapSectionRef} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Interactive Aerial Map Card */}
-        <div className="lg:col-span-8 bg-[#141C2D] rounded-3xl p-4 sm:p-5 border border-white/10 space-y-4">
+        <div
+          className={`lg:col-span-8 rounded-3xl p-4 sm:p-5 border space-y-4 transition-colors ${
+            isInsideCampus
+              ? 'bg-[#101C2B] border-emerald-400/45 shadow-lg shadow-emerald-500/10'
+              : 'bg-[#141C2D] border-white/10'
+          }`}
+        >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-cyan-400" />
                 <span>{t.campusMode.campusMap}</span>
+                {userMapPos && (
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-bold">
+                    GPS Pinned Live
+                  </span>
+                )}
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Tap any numbered building pin on the ASU aerial view to inspect facilities & walking route.
+                {userMapPos
+                  ? 'Your live GPS dot appears on the aerial map. Tap any building pin for route & distance.'
+                  : 'Tap any numbered building pin on the ASU aerial view to inspect facilities & walking route.'}
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <select
-                value={simulatedLocation}
-                onChange={(e) => setSimulatedLocation(e.target.value)}
-                aria-label="Starting building"
-                className="h-9 px-3 rounded-xl bg-[#080B14] border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-500"
-              >
-                {ASU_BUILDINGS.map((b) => (
-                  <option key={b.code} value={b.code} className="bg-[#101525]">
-                    From: Bldg {b.code} ({b.shortName})
-                  </option>
-                ))}
-              </select>
+              {!userMapPos && (
+                <select
+                  value={simulatedLocation}
+                  onChange={(e) => setSimulatedLocation(e.target.value)}
+                  aria-label="Starting building"
+                  className="h-9 px-3 rounded-xl bg-[#080B14] border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-500"
+                >
+                  {ASU_BUILDINGS.map((b) => (
+                    <option key={b.code} value={b.code} className="bg-[#101525]">
+                      From: Bldg {b.code} ({b.shortName})
+                    </option>
+                  ))}
+                </select>
+              )}
 
               {/* Zoom Controls */}
               <div className="flex items-center gap-1 bg-[#080B14] border border-white/10 rounded-xl p-1">
@@ -344,7 +502,7 @@ export function CampusModeView() {
             </div>
           </div>
 
-          {/* Aerial Image Viewport with Numbered Building Pins + Walking Path */}
+          {/* Aerial Image Viewport with Numbered Building Pins + Live GPS Dot + Walking Path */}
           <div className="relative w-full rounded-2xl bg-[#090D18] border border-white/10 overflow-auto max-h-[620px]">
             <div
               className="relative transition-[width] duration-200 ease-out"
@@ -370,12 +528,12 @@ export function CampusModeView() {
                   className="absolute inset-0 w-full h-full pointer-events-none z-10"
                 >
                   <line
-                    x1={originBuilding.mapX}
-                    y1={originBuilding.mapY}
+                    x1={routeStartX}
+                    y1={routeStartY}
                     x2={selectedBuilding.mapX}
                     y2={selectedBuilding.mapY}
-                    stroke="#22d3ee"
-                    strokeWidth="0.65"
+                    stroke={userMapPos ? '#34d399' : '#22d3ee'}
+                    strokeWidth="0.7"
                     strokeDasharray="1.6 1.2"
                     strokeLinecap="round"
                   />
@@ -385,7 +543,7 @@ export function CampusModeView() {
               {/* Numbered Building Pins */}
               {ASU_BUILDINGS.map((b) => {
                 const isSelected = selectedBuildingCode === b.code;
-                const isOrigin = originBuilding.code === b.code;
+                const isOrigin = !userMapPos && originBuilding.code === b.code;
                 const isNextLecture = nextDecoded?.buildingCode === b.code;
 
                 return (
@@ -424,20 +582,48 @@ export function CampusModeView() {
                   </button>
                 );
               })}
+
+              {/* LIVE STUDENT GPS MARKER (when inside ASU campus) */}
+              {userMapPos && (
+                <div
+                  style={{ top: `${userMapPos.mapY}%`, left: `${userMapPos.mapX}%` }}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 z-40 pointer-events-none"
+                >
+                  <motion.span
+                    animate={{ scale: [1, 2.6], opacity: [0.8, 0] }}
+                    transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }}
+                    className="absolute inset-0 rounded-full bg-emerald-400"
+                  />
+                  <div className="relative w-5 h-5 rounded-full bg-emerald-400 border-2 border-white shadow-xl shadow-emerald-500/60 flex items-center justify-center">
+                    <span className="w-2 h-2 rounded-full bg-[#080B14]" />
+                  </div>
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 px-2 py-0.5 rounded-md bg-emerald-500 text-[#080B14] font-extrabold text-[10px] whitespace-nowrap shadow-lg">
+                    YOU
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Map Legend & Route Summary Strip */}
           <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-[11px] text-slate-300">
             <div className="flex flex-wrap items-center gap-4">
+              {userMapPos && (
+                <div className="flex items-center gap-1.5 font-bold text-emerald-300">
+                  <span className="w-3 h-3 rounded-full bg-emerald-400 border border-white inline-block animate-pulse" />
+                  <span>Your Live GPS</span>
+                </div>
+              )}
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-cyan-400 border border-white inline-block" />
                 <span>Selected</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-emerald-500 border border-white inline-block" />
-                <span>Start ({originBuilding.code})</span>
-              </div>
+              {!userMapPos && (
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-full bg-emerald-500 border border-white inline-block" />
+                  <span>Start ({originBuilding.code})</span>
+                </div>
+              )}
               {nextCourse && nextDecoded?.isValid && (
                 <div className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded-full bg-purple-500 border border-white inline-block" />
@@ -450,9 +636,10 @@ export function CampusModeView() {
               <div className="flex items-center gap-1.5 text-cyan-300 font-semibold">
                 <Route className="w-3.5 h-3.5" />
                 <span>
-                  Bldg {originBuilding.code} → Bldg {selectedBuilding.code}:{' '}
-                  <span className="font-mono tabular-nums">{selectedWalkInfo.meters} m</span> (~
-                  {selectedWalkInfo.minutes} min)
+                  {userMapPos ? 'Your GPS' : `Bldg ${originBuilding.code}`} → Bldg{' '}
+                  {selectedBuilding.code}:{' '}
+                  <span className="font-mono tabular-nums">{formatDistance(selectedWalkInfo.meters)}</span> (~
+                  {formatMinutesToHours(selectedWalkInfo.minutes)})
                 </span>
               </div>
             )}
@@ -463,23 +650,34 @@ export function CampusModeView() {
         <div className="lg:col-span-4 space-y-4">
           {/* Selected Building Card */}
           <div className="p-5 rounded-3xl bg-[#141C2D] border border-cyan-500/30 space-y-3.5">
-            <div className="flex items-start gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-cyan-500 text-[#080B14] flex items-center justify-center font-mono text-base font-black shrink-0 shadow-md shadow-cyan-500/20">
-                {selectedBuilding.code}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="w-11 h-11 rounded-2xl bg-cyan-500 text-[#080B14] flex items-center justify-center font-mono text-base font-black shrink-0 shadow-md shadow-cyan-500/20">
+                  {selectedBuilding.code}
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">
+                    {selectedBuilding.category}
+                  </span>
+                  <h3 className="text-sm sm:text-base font-extrabold text-white leading-snug">
+                    {selectedBuilding.nameEn}
+                  </h3>
+                </div>
               </div>
-              <div className="min-w-0">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">
-                  {selectedBuilding.category}
-                </span>
-                <h3 className="text-sm sm:text-base font-extrabold text-white leading-snug">
-                  {selectedBuilding.nameEn}
-                </h3>
-              </div>
+              <a
+                href={selectedBuilding.mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`Open Bldg ${selectedBuilding.code} in Google Maps`}
+                className="p-2 rounded-xl bg-white/5 hover:bg-cyan-500/20 border border-white/10 text-cyan-300 shrink-0"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">{selectedBuilding.description}</p>
 
-            {/* Walk Time & Distance */}
+            {/* Walk Time & Real Distance */}
             <div className="grid grid-cols-2 gap-2.5 text-center">
               <div className="p-2.5 rounded-2xl bg-[#080B14] border border-white/10">
                 <div className="text-[10px] text-slate-400 flex items-center justify-center gap-1">
@@ -487,18 +685,33 @@ export function CampusModeView() {
                   <span>Walk Time</span>
                 </div>
                 <div className="text-sm font-mono font-bold text-cyan-300 mt-0.5 tabular-nums">
-                  ~{selectedWalkInfo.minutes} min
+                  ~{formatMinutesToHours(selectedWalkInfo.minutes)}
                 </div>
               </div>
               <div className="p-2.5 rounded-2xl bg-[#080B14] border border-white/10">
                 <div className="text-[10px] text-slate-400 flex items-center justify-center gap-1">
                   <Navigation className="w-3 h-3 text-emerald-400" />
-                  <span>Distance</span>
+                  <span>{selectedWalkInfo.usedRealGps ? 'Real Distance' : 'Distance'}</span>
                 </div>
                 <div className="text-sm font-mono font-bold text-emerald-300 mt-0.5 tabular-nums">
-                  {selectedWalkInfo.meters} m
+                  {formatDistance(selectedWalkInfo.meters)}
                 </div>
               </div>
+            </div>
+
+            {/* Exact Coordinates Strip */}
+            <div className="px-3 py-2 rounded-xl bg-[#080B14]/70 border border-white/5 flex items-center justify-between text-[10px] font-mono text-slate-400">
+              <span>
+                {selectedBuilding.lat.toFixed(5)}°N, {selectedBuilding.lng.toFixed(5)}°E
+              </span>
+              <a
+                href={selectedBuilding.mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-cyan-400 hover:text-cyan-300 font-bold"
+              >
+                Maps Pin ↗
+              </a>
             </div>
 
             {/* Key Facilities */}
@@ -602,6 +815,9 @@ export function CampusModeView() {
                 <div className="font-bold text-white truncate mt-0.5">
                   {nextCourse.courseName} ({nextCourse.classroom})
                 </div>
+                <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                  {formatDistance(nextClassWalkInfo.meters)} away
+                </div>
               </div>
               <button
                 type="button"
@@ -609,7 +825,7 @@ export function CampusModeView() {
                 className="font-mono font-bold text-cyan-300 bg-[#080B14] border border-white/10 px-2.5 py-1.5 rounded-xl flex items-center gap-1 shrink-0 hover:border-cyan-500/40 cursor-pointer"
               >
                 <Clock className="w-3.5 h-3.5" />
-                <span>~{nextClassWalkInfo.minutes}m</span>
+                <span>~{formatMinutesToHours(nextClassWalkInfo.minutes)}</span>
               </button>
             </div>
           )}

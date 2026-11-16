@@ -93,8 +93,15 @@ export interface CourseRecommendationGroup {
 // SMART CAMPUS & WEATHER
 export interface CampusWeatherAlert {
   temperatureC: number;
+  feelsLikeC?: number;
+  humidity?: number;
+  windKmh?: number;
+  weatherCode?: number;
+  isDay?: boolean;
   condition: string;
   advisory?: string;
+  updatedAt?: string;
+  isLive?: boolean;
 }
 
 // PROBLEM REPORTING ("Report a Problem")
@@ -173,5 +180,7 @@ export interface NotificationItem {
 export interface NotificationPreferences {
   walkingWarnings: boolean; // Alert 15 mins before lecture with ON TIME / TIGHT status
   examDeadlines: boolean; // Reminders 48h and 2h prior to scheduled evaluations
+  inAppAlertsEnabled?: boolean; // Guaranteed in-app banner & tone alerts even if OS push is blocked in iframe/Safari
+  blockReason?: 'none' | 'iframe' | 'denied' | 'unsupported';
   permissionStatus: 'default' | 'granted' | 'denied' | 'unsupported';
 }

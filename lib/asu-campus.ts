@@ -8,6 +8,7 @@ export interface AsuBuilding {
   mapY: number; // % Y coordinate matching aerial ASU campus map
   lat: number;
   lng: number;
+  mapsUrl: string;
   category: 'academic' | 'admin' | 'sports' | 'health';
 }
 
@@ -15,10 +16,11 @@ export const ASU_CAMPUS_MAPS_URL = 'https://maps.app.goo.gl/i5XmG6WSvkwFXwPP9';
 export const ASU_AERIAL_MAP_IMAGE = '/assets/aistudio/WhatsApp_Image_2026-11-14_at_6.50.59_AM_d4459190.jpeg';
 
 // Applied Science Private University (ASU), Shafa Badran, Amman, Jordan
+// Centroid derived from official Google Maps college & building coordinates
 export const ASU_CAMPUS_CENTER = {
-  lat: 32.0403,
-  lng: 35.9006,
-  radiusMeters: 650,
+  lat: 32.0401,
+  lng: 35.9014,
+  radiusMeters: 550,
 };
 
 export const ASU_BUILDINGS: AsuBuilding[] = [
@@ -30,20 +32,22 @@ export const ASU_BUILDINGS: AsuBuilding[] = [
     facilities: ['Computer Labs', 'Apple Lab', 'Smart Classrooms', 'Auditorium'],
     mapX: 64.0,
     mapY: 39.5,
-    lat: 32.0409,
-    lng: 35.8998,
+    lat: 32.0402957,
+    lng: 35.9016609,
+    mapsUrl: 'https://maps.app.goo.gl/7yeezRZ1gB6rmqZz5',
     category: 'academic',
   },
   {
     code: '2',
-    nameEn: 'Faculty of Law & Sciences',
+    nameEn: 'Faculty of Law and Sciences',
     shortName: 'Law & Sciences',
-    description: 'Law classrooms, moot court hall, and foundational science lecture rooms.',
+    description: 'Al-Bayrouni Building housing law classrooms, moot court hall, and foundational science lecture rooms.',
     facilities: ['Moot Court', 'Lecture Halls', 'Faculty Offices'],
     mapX: 77.0,
     mapY: 22.0,
-    lat: 32.0414,
-    lng: 35.9013,
+    lat: 32.0411964,
+    lng: 35.9025234,
+    mapsUrl: 'https://maps.app.goo.gl/KYutVyHw9wPq7Ezk7',
     category: 'academic',
   },
   {
@@ -54,80 +58,87 @@ export const ASU_BUILDINGS: AsuBuilding[] = [
     facilities: ['CNC & Metal Labs', 'Material Testing', 'Safety Gear Desk'],
     mapX: 92.5,
     mapY: 43.0,
-    lat: 32.0406,
-    lng: 35.9025,
+    lat: 32.039518,
+    lng: 35.902958,
+    mapsUrl: 'https://maps.app.goo.gl/FHSN75ivqYWACWh68',
     category: 'academic',
   },
   {
     code: '4',
     nameEn: 'Faculty of Pharmacy',
     shortName: 'Pharmacy',
-    description: 'Ibn Al-Bitar building housing pharmaceutics, pharmacology, and chemistry labs.',
+    description: 'Ibn Al-Beetar Building housing pharmaceutics, pharmacology, and chemistry labs.',
     facilities: ['Pharmaceutical Labs', 'Simulation Pharmacy', 'Research Wing'],
     mapX: 73.5,
     mapY: 41.0,
-    lat: 32.0404,
-    lng: 35.9012,
+    lat: 32.0402566,
+    lng: 35.9019701,
+    mapsUrl: 'https://maps.app.goo.gl/wewtK2KFq2wR45eSA',
     category: 'academic',
   },
   {
     code: '5',
     nameEn: 'Faculty of Business',
     shortName: 'Business',
-    description: 'Accounting, finance, marketing, and business analytics departments.',
+    description: 'Ibn Al-Razi Building housing accounting, finance, marketing, and business analytics departments.',
     facilities: ['Trading Room', 'Case Study Halls', 'Dean Office'],
     mapX: 54.0,
     mapY: 39.5,
-    lat: 32.0406,
-    lng: 35.8996,
+    lat: 32.0405615,
+    lng: 35.9010336,
+    mapsUrl: 'https://maps.app.goo.gl/nYrNWJm3ySMEhb189',
     category: 'academic',
   },
   {
     code: '6',
-    nameEn: 'Sports Hall & Arena',
+    nameEn: 'Sports Hall',
     shortName: 'Sports Hall',
     description: 'Main indoor multi-sport complex, events arena, and athletic facilities.',
     facilities: ['Indoor Arena', 'Gymnasium', 'Graduation Hall'],
     mapX: 63.5,
     mapY: 55.0,
-    lat: 32.0397,
-    lng: 35.9004,
+    lat: 32.039436,
+    lng: 35.901126,
+    mapsUrl: 'https://maps.app.goo.gl/iHotTbiSvZYXWNu68',
     category: 'sports',
   },
   {
     code: '7',
     nameEn: 'Faculty of Nursing',
     shortName: 'Nursing',
-    description: 'Clinical nursing skills labs, patient simulation wards, and lecture rooms.',
+    description: 'Ibn Al-Nafees Building housing clinical nursing skills labs, patient simulation wards, and lecture rooms.',
     facilities: ['Clinical Simulation Labs', 'Anatomy Room', 'Lecture Halls'],
     mapX: 89.0,
     mapY: 70.0,
-    lat: 32.0389,
-    lng: 35.9022,
+    lat: 32.0381434,
+    lng: 35.9020552,
+    mapsUrl: 'https://maps.app.goo.gl/9ZmQdw9QmXhpQ52CA',
     category: 'academic',
   },
   {
     code: '8',
-    nameEn: 'Faculty of Arts & Design',
+    nameEn: 'Faculty of Arts',
     shortName: 'Arts & Design',
-    description: 'Graphic design, interior architecture studios, and exhibition galleries.',
+    description: 'Faculty of Arts and Humanities classrooms, design studios, and exhibition galleries.',
     facilities: ['Design Studios', 'CAD Labs', 'Exhibition Hall'],
     mapX: 84.0,
     mapY: 42.5,
-    lat: 32.0403,
-    lng: 35.9019,
+    lat: 32.0399098,
+    lng: 35.90247,
+    mapsUrl: 'https://maps.app.goo.gl/SqmMBFmfgEPwStax6',
     category: 'academic',
   },
   {
     code: '9',
-    nameEn: 'Faculty of Engineering, Arts & Sharia',
-    shortName: 'Engineering Complex',
-    description: 'Main multi-wing complex for engineering, humanities, and Sharia classrooms.',
+    nameEn: 'Engineering, Arts and Sharia Colleges',
+    shortName: 'Eng / Arts / Sharia',
+    description: 'Main multi-wing complex for Engineering, Arts, and Sharia lecture halls and laboratories.',
     facilities: ['Central Courtyard', 'Engineering Labs', 'Lecture Wings'],
     mapX: 42.5,
     mapY: 31.0,
-    lat: 32.0411,
-    lng: 35.8991,
+    lat: 32.041155,
+    lng: 35.900651,
+    mapsUrl: 'https://maps.app.goo.gl/BT6VS5yQVqLfd2WY8',
     category: 'academic',
   },
   {
@@ -138,8 +149,9 @@ export const ASU_BUILDINGS: AsuBuilding[] = [
     facilities: ['Student Clubs', 'Main Auditorium', 'Student Lounge'],
     mapX: 19.5,
     mapY: 22.0,
-    lat: 32.0415,
-    lng: 35.8977,
+    lat: 32.041835,
+    lng: 35.899442,
+    mapsUrl: 'https://maps.app.goo.gl/Go3YcAkTyh1UoRJk6',
     category: 'admin',
   },
   {
@@ -150,20 +162,22 @@ export const ASU_BUILDINGS: AsuBuilding[] = [
     facilities: ['Medical Clinic', 'Dental Clinics', 'Emergency Care'],
     mapX: 85.0,
     mapY: 56.5,
-    lat: 32.0396,
-    lng: 35.9021,
+    lat: 32.039154,
+    lng: 35.902326,
+    mapsUrl: 'https://maps.app.goo.gl/Vd7U9vv7Nf5h5rPZ8',
     category: 'health',
   },
   {
     code: '14',
-    nameEn: 'Faculty of Science',
-    shortName: 'Science (14)',
-    description: 'Physics, chemistry, biology, and mathematics teaching laboratories.',
-    facilities: ['Science Labs', 'Lecture Rooms', 'Study Zone'],
+    nameEn: 'Faculty of Allied Medical Sciences',
+    shortName: 'Allied Medical (14)',
+    description: 'Ibn Khaldoun Building housing Allied Medical Sciences laboratories and lecture rooms.',
+    facilities: ['Medical Labs', 'Lecture Rooms', 'Study Zone'],
     mapX: 86.5,
     mapY: 29.0,
-    lat: 32.0411,
-    lng: 35.9021,
+    lat: 32.0406221,
+    lng: 35.902864,
+    mapsUrl: 'https://maps.app.goo.gl/BsEbkczhprxrgXBe6',
     category: 'academic',
   },
   {
@@ -174,8 +188,9 @@ export const ASU_BUILDINGS: AsuBuilding[] = [
     facilities: ['Dental Simulation Labs', 'Radiology Unit', 'Lecture Halls'],
     mapX: 85.0,
     mapY: 49.5,
-    lat: 32.0399,
-    lng: 35.9021,
+    lat: 32.039154,
+    lng: 35.902326,
+    mapsUrl: 'https://maps.app.goo.gl/Vd7U9vv7Nf5h5rPZ8',
     category: 'academic',
   },
 ];
@@ -214,7 +229,7 @@ export function findAsuBuilding(code: string): AsuBuilding | undefined {
  * Decodes ASU classroom codes such as:
  * - "7106" -> Building 7 (Faculty of Nursing), 1st Floor, Room 06
  * - "1B12" -> Building 1 (Faculty of IT), Basement (B), Room 12
- * - "14203" -> Building 14 (Faculty of Science), 2nd Floor, Room 03
+ * - "14203" -> Building 14 (Faculty of Allied Medical Sciences), 2nd Floor, Room 03
  * - "21105" -> Building 21 (Faculty of Dentistry), 1st Floor, Room 05
  * - "G/B12" or "GB12" -> Clinics Building (G/B), Room 12
  */
@@ -307,6 +322,31 @@ export function calculateDistanceMeters(
   return Math.round(R * c);
 }
 
+export function formatDistance(meters: number): string {
+  if (meters < 1000) return `${meters} m`;
+  return `${(meters / 1000).toFixed(2)} km`;
+}
+
+/**
+ * Calibrated affine projection mapping real GPS (lat, lng) inside ASU campus
+ * to the percentage coordinates (mapX, mapY) on the ASU aerial campus image.
+ */
+export function projectGpsToMapXY(
+  lat: number,
+  lng: number
+): { mapX: number; mapY: number; inBounds: boolean } {
+  const dLat = (lat - 32.04) * 1000;
+  const dLng = (lng - 35.901) * 1000;
+  const rawX = 57.2398 + -6.4126 * dLat + 17.2799 * dLng;
+  const rawY = 46.2266 + -15.1476 * dLat + -4.0073 * dLng;
+  const inBounds = rawX >= 2 && rawX <= 98 && rawY >= 2 && rawY <= 98;
+  return {
+    mapX: Math.max(3, Math.min(97, Number(rawX.toFixed(2)))),
+    mapY: Math.max(3, Math.min(97, Number(rawY.toFixed(2)))),
+    inBounds,
+  };
+}
+
 export function isInsideAsuCampus(lat: number, lng: number): {
   inside: boolean;
   distanceFromCenterMeters: number;
@@ -331,7 +371,7 @@ export function isInsideAsuCampus(lat: number, lng: number): {
   }
 
   return {
-    inside: distCenter <= ASU_CAMPUS_CENTER.radiusMeters,
+    inside: distCenter <= ASU_CAMPUS_CENTER.radiusMeters || minDist <= 180,
     distanceFromCenterMeters: distCenter,
     nearestBuilding: nearest,
     distanceToNearestBuildingMeters: minDist,
@@ -343,12 +383,14 @@ export function estimateWalkingMinutesToBuilding(
   fromBuildingCode: string | null,
   targetBuildingCode: string,
   speed: 'normal' | 'brisk' = 'normal'
-): { minutes: number; meters: number } {
+): { minutes: number; meters: number; usedRealGps: boolean } {
   const target = findAsuBuilding(targetBuildingCode) || ASU_BUILDINGS[0];
   let meters = 200;
+  let usedRealGps = false;
 
   if (fromCoords) {
     meters = calculateDistanceMeters(fromCoords.lat, fromCoords.lng, target.lat, target.lng);
+    usedRealGps = true;
   } else if (fromBuildingCode) {
     const fromBld = findAsuBuilding(fromBuildingCode);
     if (fromBld) {
@@ -360,8 +402,8 @@ export function estimateWalkingMinutesToBuilding(
   }
 
   const metersPerMin = speed === 'brisk' ? 100 : 75;
-  const minutes = Math.max(1, Math.ceil(meters / metersPerMin));
-  return { minutes, meters };
+  const minutes = meters < 15 ? 1 : Math.max(1, Math.ceil(meters / metersPerMin));
+  return { minutes, meters, usedRealGps };
 }
 
 export function formatMinutesToHours(totalMinutes: number): string {

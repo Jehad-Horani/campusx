@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useStore } from '@/lib/store';
 import { NotificationItem } from '@/types/campusx';
 import {
@@ -11,6 +11,8 @@ import {
   Compass,
   Users,
   Sparkles,
+  Volume2,
+  ExternalLink,
 } from 'lucide-react';
 
 export function NotificationDrawer() {
@@ -20,8 +22,27 @@ export function NotificationDrawer() {
     notifications,
     markNotificationRead,
     markAllNotificationsRead,
+    notificationPrefs,
+    requestNotificationPermission,
+    sendTestNotification,
     t,
   } = useStore();
+
+  const [inIframe, setInIframe] = useState(false);
+  const [appUrl, setAppUrl] = useState('');
+
+  useEffect(() => {
+    const syncEnv = () => {
+      try {
+        setInIframe(window.self !== window.top);
+      } catch {
+        setInIframe(true);
+      }
+      setAppUrl(window.location.href);
+    };
+    const t0 = setTimeout(syncEnv, 0);
+    return () => clearTimeout(t0);
+  }, []);
 
   if (!isNotificationDrawerOpen) return null;
 
@@ -39,6 +60,8 @@ export function NotificationDrawer() {
     }
   };
 
+  const osGranted = notificationPrefs.permissionStatus === 'granted';
+
   return (
     <div
       onClick={() => setIsNotificationDrawerOpen(false)}
@@ -55,6 +78,13 @@ export function NotificationDrawer() {
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={sendTestNotification}
+              className="text-[11px] text-purple-300 hover:text-purple-200 flex items-center gap-1 px-2 py-1 rounded bg-purple-500/15 border border-purple-500/30 transition-colors cursor-pointer"
+            >
+              <Volume2 className="w-3 h-3" />
+              <span>Test</span>
+            </button>
+            <button
               onClick={markAllNotificationsRead}
               className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 px-2 py-1 rounded hover:bg-white/5 transition-colors cursor-pointer"
             >
@@ -69,6 +99,35 @@ export function NotificationDrawer() {
             </button>
           </div>
         </div>
+
+        {/* Status Bar inside Drawer */}
+        {!osGranted && (
+          <div className="px-4 py-2.5 bg-cyan-950/35 border-b border-cyan-500/20 flex items-center justify-between gap-2 text-[11px]">
+            <span className="text-slate-300">
+              {inIframe
+                ? 'In-App Alerts active (preview iframe blocks OS push popups)'
+                : 'Enable push alerts for lectures & exams'}
+            </span>
+            {inIframe && appUrl ? (
+              <a
+                href={appUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-2.5 py-1 rounded-lg bg-cyan-500 text-[#080B14] font-bold shrink-0 inline-flex items-center gap-1"
+              >
+                <ExternalLink className="w-3 h-3" />
+                <span>Full Tab</span>
+              </a>
+            ) : (
+              <button
+                onClick={requestNotificationPermission}
+                className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold shrink-0 cursor-pointer"
+              >
+                Enable
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
           {notifications.length === 0 ? (

@@ -51,7 +51,7 @@ export const INITIAL_STUDENTS_DIRECTORY: Student[] = [
     email: 'o_barakat@asu.edu.jo',
     phoneNumber: '+962 7 8555 2211',
     role: 'student',
-    faculty: 'Faculty of Engineering, Arts & Sharia (Bldg 9)',
+    faculty: 'Engineering, Arts and Sharia Colleges (Bldg 9)',
     major: 'Civil Engineering',
     academicYear: 2,
     onboardingCompleted: true,

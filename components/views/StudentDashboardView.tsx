@@ -1,9 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { useStore } from '@/lib/store';
 import { ScheduleItem, ScheduleItemType } from '@/types/campusx';
-import { decodeAsuClassroom, formatTime12h, parseTimeToMinutes } from '@/lib/asu-campus';
+import {
+  decodeAsuClassroom,
+  formatTime12h,
+  isInsideAsuCampus,
+  parseTimeToMinutes,
+} from '@/lib/asu-campus';
 import { CampusModeCard } from '@/components/CampusModeCard';
 import {
   Calendar,
@@ -22,6 +28,7 @@ import {
   X,
   GraduationCap,
   Loader2,
+  Radio,
 } from 'lucide-react';
 
 export function StudentDashboardView() {
@@ -35,10 +42,12 @@ export function StudentDashboardView() {
     isLoadingRecommendations,
     announcements,
     setActiveView,
+    userCoordinates,
     locationPermissionStatus,
     requestLocationAccess,
     notificationPrefs,
     requestNotificationPermission,
+    campusWeather,
     t,
   } = useStore();
 
@@ -142,8 +151,16 @@ export function StudentDashboardView() {
     return `in ${days}d`;
   };
 
+  const campusCheck = userCoordinates
+    ? isInsideAsuCampus(userCoordinates.lat, userCoordinates.lng)
+    : null;
+  const isInsideCampus = Boolean(campusCheck?.inside);
+
+  const alertsConfigured =
+    notificationPrefs.permissionStatus === 'granted' || Boolean(notificationPrefs.inAppAlertsEnabled);
+
   const showPermissionsBanner =
-    locationPermissionStatus !== 'granted' || notificationPrefs.permissionStatus !== 'granted';
+    locationPermissionStatus !== 'granted' || !alertsConfigured;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -161,13 +178,72 @@ export function StudentDashboardView() {
           <p className="text-xs sm:text-sm text-slate-400 mt-0.5">{t.dashboard.welcomeSub}</p>
         </div>
 
-        <div className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-slate-300 flex items-center gap-2 self-start sm:self-auto">
-          <GraduationCap className="w-4 h-4 text-cyan-400" />
-          <span>
-            Year {student.academicYear} · {student.major}
-          </span>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          {isInsideCampus && campusCheck && (
+            <motion.div
+              animate={{ opacity: [0.85, 1, 0.85] }}
+              transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+              className="px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-400/50 text-xs font-bold text-emerald-200 flex items-center gap-2 shadow-lg shadow-emerald-500/15"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>On Campus · Bldg {campusCheck.nearestBuilding.code}</span>
+            </motion.div>
+          )}
+          <div className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-slate-300 flex items-center gap-2">
+            <GraduationCap className="w-4 h-4 text-cyan-400" />
+            <span>
+              Year {student.academicYear} · {student.major}
+            </span>
+          </div>
         </div>
       </div>
+
+      {/* Live On-Campus Animated Atmosphere Strip */}
+      {isInsideCampus && campusCheck && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative overflow-hidden p-4 rounded-3xl bg-gradient-to-r from-emerald-950/70 via-[#0E222A] to-cyan-950/70 border border-emerald-400/45 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+        >
+          <motion.div
+            aria-hidden
+            animate={{ x: ['-100%', '220%'] }}
+            transition={{ duration: 4.5, repeat: Infinity, ease: 'linear' }}
+            className="pointer-events-none absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-emerald-300/15 to-transparent skew-x-12"
+          />
+          <div className="relative z-10 flex items-center gap-3">
+            <div className="relative w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-emerald-300 shrink-0">
+              <motion.span
+                aria-hidden
+                animate={{ scale: [1, 1.8], opacity: [0.6, 0] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }}
+                className="absolute inset-0 rounded-2xl bg-emerald-400/40"
+              />
+              <Radio className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs sm:text-sm font-extrabold text-white flex flex-wrap items-center gap-2">
+                <span>Welcome Inside ASU Campus</span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 text-[10px] font-bold border border-emerald-400/30">
+                  LIVE TRACKING
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-100/80 mt-0.5">
+                Nearest building: <strong>Bldg {campusCheck.nearestBuilding.code} ({campusCheck.nearestBuilding.nameEn})</strong> · {campusWeather.temperatureC}°C {campusWeather.condition}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setActiveView('campus-mode')}
+            className="relative z-10 h-9 px-3.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-[#080B14] font-extrabold text-xs flex items-center gap-1.5 self-start sm:self-auto cursor-pointer shrink-0 transition-colors"
+          >
+            <span>See My Pin on Map</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </motion.div>
+      )}
 
       {/* Permissions Banner */}
       {showPermissionsBanner && (
@@ -178,7 +254,7 @@ export function StudentDashboardView() {
               <span>Enable Smart Permissions for Full Experience</span>
             </h2>
             <p className="text-xs text-slate-300 leading-relaxed max-w-2xl">
-              Location access detects if you are inside ASU campus to calculate walking time, and Notifications alert you 15m before lectures and 48h/2h before exams & quizzes.
+              Location access detects if you are inside ASU campus to calculate real walking distance, and Notifications alert you 15m before lectures and 48h/2h before exams & quizzes.
             </p>
           </div>
 
@@ -192,7 +268,7 @@ export function StudentDashboardView() {
                 <span>Allow Location</span>
               </button>
             )}
-            {notificationPrefs.permissionStatus !== 'granted' && (
+            {!alertsConfigured && (
               <button
                 onClick={requestNotificationPermission}
                 className="h-10 px-3.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"

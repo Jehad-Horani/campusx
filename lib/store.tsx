@@ -143,6 +143,7 @@ interface StoreContextType {
   walkingSpeed: 'normal' | 'brisk';
   setWalkingSpeed: (speed: 'normal' | 'brisk') => void;
   campusWeather: CampusWeatherAlert;
+  refreshCampusWeather: () => Promise<void>;
 
   // Notifications & Real Push Preferences
   notifications: NotificationItem[];
@@ -151,6 +152,7 @@ interface StoreContextType {
   notificationPrefs: NotificationPreferences;
   updateNotificationPrefs: (prefs: Partial<NotificationPreferences>) => void;
   requestNotificationPermission: () => Promise<void>;
+  sendTestNotification: () => Promise<void>;
 
   // Real Offline State (Triggered automatically by network disconnect)
   isOffline: boolean;
@@ -215,17 +217,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   >('prompt');
   const [simulatedLocation, setSimulatedLocation] = useState<string>('1');
   const [walkingSpeed, setWalkingSpeed] = useState<'normal' | 'brisk'>('normal');
-  const [campusWeather] = useState<CampusWeatherAlert>(INITIAL_CAMPUS_WEATHER);
+  const [campusWeather, setCampusWeather] = useState<CampusWeatherAlert>(INITIAL_CAMPUS_WEATHER);
 
   // Notifications & Preferences
   const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>({
     walkingWarnings: true,
     examDeadlines: true,
+    inAppAlertsEnabled: false,
+    blockReason: 'none',
     permissionStatus: 'default',
   });
   const firedAlertsRef = useRef<Set<string>>(new Set());
   const lastFetchedCoursesKeyRef = useRef<string>('');
+  const gpsWatchIdRef = useRef<number | null>(null);
 
   // Network Status (Real browser online/offline detection)
   const [isOffline, setIsOffline] = useState<boolean>(false);
@@ -275,17 +280,94 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, student, courses, schedule, courseRecommendations]);
 
-  // Real Online / Offline Listener (automatic switch when internet disconnects)
+  const refreshCampusWeather = useCallback(async () => {
+    if (typeof window === 'undefined' || !navigator.onLine) return;
+    try {
+      const res = await fetch('/api/weather', { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && typeof data.temperatureC === 'number') {
+        setCampusWeather(data as CampusWeatherAlert);
+      }
+    } catch {
+      // keep existing weather snapshot
+    }
+  }, []);
+
+  const playAlertChime = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const now = ctx.currentTime;
+      const notes = [587.33, 880]; // D5 -> A5 gentle chime
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + i * 0.11);
+        gain.gain.setValueAtTime(0.001, now + i * 0.11);
+        gain.gain.exponentialRampToValueAtTime(0.07, now + i * 0.11 + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.11 + 0.25);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + i * 0.11);
+        osc.stop(now + i * 0.11 + 0.26);
+      });
+    } catch {
+      // Audio playback skipped cleanly
+    }
+  }, []);
+
+  const dispatchBrowserNotification = useCallback(async (title: string, body: string) => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+
+    const options: NotificationOptions = {
+      body,
+      icon: '/assets/aistudio/LOGO_bc48159f.png',
+      badge: '/assets/aistudio/LOGO_bc48159f.png',
+      tag: title,
+    };
+
+    try {
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg && typeof reg.showNotification === 'function') {
+          await reg.showNotification(title, options);
+          return;
+        }
+      }
+      new Notification(title, options);
+    } catch {
+      try {
+        new Notification(title, options);
+      } catch {
+        // Fallback handled by in-app notification center & toast
+      }
+    }
+  }, []);
+
+  // Real Online / Offline Listener + Weather Sync
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const initTimer = setTimeout(() => {
       setIsOffline(!navigator.onLine);
+      void refreshCampusWeather();
     }, 0);
+
+    const weatherInterval = setInterval(() => {
+      void refreshCampusWeather();
+    }, 10 * 60 * 1000);
 
     const handleOnline = () => {
       setIsOffline(false);
       setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
       showToast('Internet connection restored.');
+      void refreshCampusWeather();
     };
     const handleOffline = () => {
       setIsOffline(true);
@@ -296,25 +378,76 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener('offline', handleOffline);
     return () => {
       clearTimeout(initTimer);
+      clearInterval(weatherInterval);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [showToast]);
+  }, [showToast, refreshCampusWeather]);
 
-  // Load initial session, cached data, and Supabase data
+  // Continuous GPS watch when permission is granted so inside-campus tracking stays live
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('geolocation' in navigator)) return;
+    if (locationPermissionStatus !== 'granted') {
+      if (gpsWatchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(gpsWatchIdRef.current);
+        gpsWatchIdRef.current = null;
+      }
+      return;
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserCoordinates(coords);
+        const check = isInsideAsuCampus(coords.lat, coords.lng);
+        if (check.inside) {
+          setSimulatedLocation(check.nearestBuilding.code);
+        }
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 15000, timeout: 15000 }
+    );
+    gpsWatchIdRef.current = watchId;
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+      if (gpsWatchIdRef.current === watchId) {
+        gpsWatchIdRef.current = null;
+      }
+    };
+  }, [locationPermissionStatus]);
+
+  // Load initial session, cached data, SW registration, and Supabase data
   useEffect(() => {
     async function bootstrap() {
       if (typeof window === 'undefined') return;
 
+      // Register lightweight notification service worker (Chrome + Safari Push compatibility)
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      }
+
       // Load saved notification prefs
       try {
         const savedPrefs = localStorage.getItem(PREFS_KEY);
-        const browserPerm =
-          'Notification' in window ? (Notification.permission as NotificationPreferences['permissionStatus']) : 'unsupported';
+        const browserPerm: NotificationPreferences['permissionStatus'] =
+          'Notification' in window
+            ? (Notification.permission as NotificationPreferences['permissionStatus'])
+            : 'unsupported';
         if (savedPrefs) {
-          setNotificationPrefs({ ...JSON.parse(savedPrefs), permissionStatus: browserPerm });
+          const parsed = JSON.parse(savedPrefs) as NotificationPreferences;
+          setNotificationPrefs({
+            ...parsed,
+            permissionStatus: browserPerm,
+            inAppAlertsEnabled: browserPerm === 'granted' ? true : Boolean(parsed.inAppAlertsEnabled),
+            blockReason: browserPerm === 'granted' ? 'none' : parsed.blockReason || 'none',
+          });
         } else {
-          setNotificationPrefs((prev) => ({ ...prev, permissionStatus: browserPerm }));
+          setNotificationPrefs((prev) => ({
+            ...prev,
+            permissionStatus: browserPerm,
+            inAppAlertsEnabled: browserPerm === 'granted',
+          }));
         }
       } catch {
         // ignore
@@ -328,12 +461,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           if (perm.state === 'granted') {
             navigator.geolocation.getCurrentPosition(
               (pos) => {
-                setUserCoordinates({
+                const coords = {
                   lat: pos.coords.latitude,
                   lng: pos.coords.longitude,
-                });
+                };
+                setUserCoordinates(coords);
+                const check = isInsideAsuCampus(coords.lat, coords.lng);
+                if (check.inside) {
+                  setSimulatedLocation(check.nearestBuilding.code);
+                }
               },
-              () => {}
+              () => {},
+              { enableHighAccuracy: true, timeout: 12000, maximumAge: 15000 }
             );
           }
         } catch {
@@ -601,17 +740,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         };
         setNotifications((prev) => [newNotif, ...prev]);
 
-        if (
-          typeof window !== 'undefined' &&
-          'Notification' in window &&
-          Notification.permission === 'granted'
-        ) {
-          try {
-            new Notification(title, { body, icon: '/assets/aistudio/LOGO_bc48159f.png' });
-          } catch {
-            // fallback handled by notification drawer
-          }
+        if (notificationPrefs.inAppAlertsEnabled || notificationPrefs.permissionStatus === 'granted') {
+          showToast(`${title} — ${body}`);
+          playAlertChime();
         }
+        void dispatchBrowserNotification(title, body);
       };
 
       const now = new Date();
@@ -623,7 +756,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const todayCode = dayNames[now.getDay()];
 
         courses.forEach((course) => {
-          if (!course.days.includes(todayCode) && course.days.length > 0) return;
+          const cDays = Array.isArray(course.days) ? course.days : [];
+          if (cDays.length > 0 && !cDays.includes(todayCode)) return;
           const lectureMinutes = parseTimeToMinutes(course.startTime);
           if (lectureMinutes < 0) return;
           const diffMins = lectureMinutes - currentMinutesOfDay;
@@ -688,10 +822,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     schedule,
     notificationPrefs.walkingWarnings,
     notificationPrefs.examDeadlines,
+    notificationPrefs.inAppAlertsEnabled,
+    notificationPrefs.permissionStatus,
     userCoordinates,
     simulatedLocation,
     walkingSpeed,
     language,
+    showToast,
+    playAlertChime,
+    dispatchBrowserNotification,
   ]);
 
   // AI External Course Recommendations fetcher (strictly bound to student's enrolled courses)
@@ -1554,47 +1693,112 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const check = isInsideAsuCampus(coords.lat, coords.lng);
         if (check.inside) {
           setSimulatedLocation(check.nearestBuilding.code);
-          showToast(`Inside ASU campus near ${check.nearestBuilding.nameEn}`);
+          showToast(`Inside ASU campus near Bldg ${check.nearestBuilding.code} (${check.nearestBuilding.nameEn})`);
         } else {
-          showToast(`Location detected (${(check.distanceFromCenterMeters / 1000).toFixed(1)} km from ASU campus)`);
+          showToast(`Live GPS active (${(check.distanceFromCenterMeters / 1000).toFixed(1)} km from ASU campus)`);
         }
       },
-      () => {
-        setLocationPermissionStatus('denied');
-        showToast('Location access denied. Please enable location permissions in your browser.');
+      (err) => {
+        if (err && err.code === 1) {
+          setLocationPermissionStatus('denied');
+          showToast('Location permission denied. Enable Location in your browser settings.');
+        } else {
+          showToast('Could not read GPS signal right now. Make sure device location is turned on.');
+        }
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 15000 }
     );
   };
 
   const requestNotificationPermission = async () => {
-    if (typeof window === 'undefined' || !('Notification' in window)) {
-      setNotificationPrefs((prev) => ({ ...prev, permissionStatus: 'unsupported' }));
-      showToast('Push notifications are unsupported in this browser.');
+    if (typeof window === 'undefined') return;
+
+    const isIframe = (() => {
+      try {
+        return window.self !== window.top;
+      } catch {
+        return true;
+      }
+    })();
+
+    if (!('Notification' in window)) {
+      const updated: NotificationPreferences = {
+        ...notificationPrefs,
+        permissionStatus: 'unsupported',
+        inAppAlertsEnabled: true,
+        blockReason: 'unsupported',
+      };
+      setNotificationPrefs(updated);
+      localStorage.setItem(PREFS_KEY, JSON.stringify(updated));
+      playAlertChime();
+      showToast('Safari on this device requires "Add to Home Screen" for OS push — In-App Smart Alerts are now active!');
       return;
     }
 
-    const result = await Notification.requestPermission();
+    // IMPORTANT: Call Notification.requestPermission synchronously inside the user click handler for Safari compatibility!
+    let result: NotificationPermission = Notification.permission;
+    try {
+      result = await new Promise<NotificationPermission>((resolve) => {
+        try {
+          const maybePromise = Notification.requestPermission((cbResult) => {
+            resolve(cbResult);
+          });
+          if (maybePromise && typeof maybePromise.then === 'function') {
+            maybePromise.then(resolve).catch(() => resolve(Notification.permission));
+          }
+        } catch {
+          resolve(Notification.permission);
+        }
+      });
+    } catch {
+      result = Notification.permission;
+    }
+
     const updated: NotificationPreferences = {
       ...notificationPrefs,
       permissionStatus: result as NotificationPreferences['permissionStatus'],
+      inAppAlertsEnabled: true,
+      blockReason: result === 'granted' ? 'none' : isIframe ? 'iframe' : 'denied',
     };
     setNotificationPrefs(updated);
     localStorage.setItem(PREFS_KEY, JSON.stringify(updated));
 
     if (result === 'granted') {
-      showToast('Notifications enabled! You will receive 15m lecture alerts & 48h/2h exam reminders.');
-      try {
-        new Notification('CampusX — ASU Alerts Active', {
-          body: 'Push alerts active for walking time warnings and exam/quiz deadlines.',
-          icon: '/assets/aistudio/LOGO_bc48159f.png',
-        });
-      } catch {
-        // ignore
-      }
+      playAlertChime();
+      showToast('Push & In-App notifications enabled for 15m lectures and 48h/2h quizzes/exams.');
+      await dispatchBrowserNotification(
+        'CampusX — ASU Alerts Active',
+        'Push notifications are enabled for walking warnings and exam/quiz deadlines.'
+      );
+    } else if (isIframe) {
+      playAlertChime();
+      showToast(
+        'In-App Smart Alerts active! Your browser blocks OS popups inside embedded preview frames — open in a full tab to allow native OS popups.'
+      );
     } else {
-      showToast('Notification permission declined.');
+      playAlertChime();
+      showToast(
+        'Browser OS notifications are blocked in site settings — In-App Smart Alerts & alert chimes are now active!'
+      );
     }
+  };
+
+  const sendTestNotification = async () => {
+    const testNotif: NotificationItem = {
+      id: `notif_test_${Date.now()}`,
+      title: 'CampusX Alert Test — Active',
+      message:
+        notificationPrefs.permissionStatus === 'granted'
+          ? 'Both OS browser notifications and In-App Smart Alerts are working properly.'
+          : 'In-App Smart Alert triggered! Open CampusX in a full browser tab to also enable native OS popups.',
+      dateSent: 'Just now',
+      category: 'system',
+      isRead: false,
+    };
+    setNotifications((prev) => [testNotif, ...prev]);
+    playAlertChime();
+    showToast(testNotif.title);
+    await dispatchBrowserNotification('CampusX — Test Alert', testNotif.message);
   };
 
   const updateNotificationPrefs = (prefs: Partial<NotificationPreferences>) => {
@@ -1674,12 +1878,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         walkingSpeed,
         setWalkingSpeed,
         campusWeather,
+        refreshCampusWeather,
         notifications,
         markNotificationRead,
         markAllNotificationsRead,
         notificationPrefs,
         updateNotificationPrefs,
         requestNotificationPermission,
+        sendTestNotification,
         isOffline,
         lastSyncTime,
         isNotificationDrawerOpen,

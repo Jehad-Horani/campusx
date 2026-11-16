@@ -1,10 +1,13 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { motion } from 'motion/react';
 import { useStore } from '@/lib/store';
 import {
   decodeAsuClassroom,
   estimateWalkingMinutesToBuilding,
+  findAsuBuilding,
+  formatDistance,
   formatMinutesToHours,
   formatTime12h,
   getNextScheduledCourse,
@@ -21,6 +24,12 @@ import {
   Compass,
   LocateFixed,
   ExternalLink,
+  Ruler,
+  Radio,
+  Sun,
+  CloudSun,
+  CloudRain,
+  Cloud,
 } from 'lucide-react';
 
 export function CampusModeCard() {
@@ -32,6 +41,7 @@ export function CampusModeCard() {
     requestLocationAccess,
     simulatedLocation,
     walkingSpeed,
+    campusWeather,
     t,
   } = useStore();
 
@@ -56,6 +66,7 @@ export function CampusModeCard() {
 
   const decodedRoom = nextCourse ? decodeAsuClassroom(nextCourse.classroom) : null;
   const targetBuildingCode = decodedRoom?.isValid ? decodedRoom.buildingCode : '1';
+  const targetBuilding = findAsuBuilding(targetBuildingCode);
 
   const walkInfo = estimateWalkingMinutesToBuilding(
     userCoordinates,
@@ -67,6 +78,7 @@ export function CampusModeCard() {
   const campusCheck = userCoordinates
     ? isInsideAsuCampus(userCoordinates.lat, userCoordinates.lng)
     : null;
+  const isInsideCampus = Boolean(campusCheck?.inside);
 
   let arrivalStatus: 'ON TIME' | 'TIGHT' | 'LATE' = 'ON TIME';
   if (nextSchedule?.isOngoing) {
@@ -103,38 +115,102 @@ export function CampusModeCard() {
     },
   }[arrivalStatus];
 
+  const WeatherIcon =
+    (campusWeather.weatherCode ?? 0) >= 51
+      ? CloudRain
+      : (campusWeather.weatherCode ?? 0) === 3
+      ? Cloud
+      : (campusWeather.weatherCode ?? 0) >= 1
+      ? CloudSun
+      : Sun;
+
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-cyan-500/30 bg-gradient-to-br from-[#101525] via-[#141C2D] to-[#1A2438] p-5 sm:p-6 shadow-xl">
+    <motion.div
+      animate={
+        isInsideCampus
+          ? {
+              boxShadow: [
+                '0 0 0 1px rgba(16, 185, 129, 0.35), 0 14px 40px -12px rgba(6, 182, 212, 0.25)',
+                '0 0 0 1px rgba(6, 182, 212, 0.6), 0 18px 48px -10px rgba(16, 185, 129, 0.35)',
+                '0 0 0 1px rgba(16, 185, 129, 0.35), 0 14px 40px -12px rgba(6, 182, 212, 0.25)',
+              ],
+            }
+          : undefined
+      }
+      transition={isInsideCampus ? { duration: 3.5, repeat: Infinity, ease: 'easeInOut' } : undefined}
+      className={`relative overflow-hidden rounded-3xl p-5 sm:p-6 shadow-xl transition-colors ${
+        isInsideCampus
+          ? 'border border-emerald-400/50 bg-gradient-to-br from-[#0B1B26] via-[#10212E] to-[#132A38]'
+          : 'border border-cyan-500/30 bg-gradient-to-br from-[#101525] via-[#141C2D] to-[#1A2438]'
+      }`}
+    >
+      {/* Animated Campus Atmosphere Shimmer when inside ASU */}
+      {isInsideCampus && (
+        <>
+          <motion.div
+            aria-hidden
+            animate={{ x: ['-100%', '200%'] }}
+            transition={{ duration: 5.5, repeat: Infinity, ease: 'linear' }}
+            className="pointer-events-none absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-emerald-400/10 to-transparent skew-x-12"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -top-24 -right-24 w-56 h-56 rounded-full bg-emerald-500/15 blur-3xl"
+          />
+        </>
+      )}
+
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300 shrink-0">
-            <Compass className="w-4 h-4" />
+          <div className="relative shrink-0">
+            {isInsideCampus && (
+              <motion.span
+                aria-hidden
+                animate={{ scale: [1, 1.75], opacity: [0.65, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeOut' }}
+                className="absolute inset-0 rounded-xl bg-emerald-400/40"
+              />
+            )}
+            <div
+              className={`relative w-9 h-9 rounded-xl flex items-center justify-center border ${
+                isInsideCampus
+                  ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300'
+                  : 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
+              }`}
+            >
+              {isInsideCampus ? <Radio className="w-4 h-4 animate-pulse" /> : <Compass className="w-4 h-4" />}
+            </div>
           </div>
+
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-extrabold text-cyan-400">{t.campusMode.title}</span>
               {campusCheck ? (
                 <span
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                     campusCheck.inside
-                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                      ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400/40'
                       : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
                   }`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${campusCheck.inside ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      campusCheck.inside ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'
+                    }`}
+                  />
                   {campusCheck.inside
-                    ? `Inside ASU (${campusCheck.nearestBuilding.nameEn})`
+                    ? `LIVE IN ASU · Near Bldg ${campusCheck.nearestBuilding.code}`
                     : `Outside ASU (${(campusCheck.distanceFromCenterMeters / 1000).toFixed(1)} km)`}
                 </span>
               ) : (
                 <button
                   onClick={requestLocationAccess}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 cursor-pointer transition-colors"
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 cursor-pointer transition-colors"
                 >
                   <LocateFixed className="w-3 h-3" />
                   <span>
-                    {locationPermissionStatus === 'granted' ? 'Refresh GPS' : 'Enable GPS'}
+                    {locationPermissionStatus === 'granted' ? 'Refresh GPS' : 'Enable Live GPS'}
                   </span>
                 </button>
               )}
@@ -143,19 +219,31 @@ export function CampusModeCard() {
           </div>
         </div>
 
-        {nextCourse && (
+        <div className="flex items-center gap-2">
+          {/* Compact Real ASU Weather Pill */}
           <div
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ${statusConfig.badgeBg} ${statusConfig.badgeBorder} ${statusConfig.textColor} text-xs font-bold`}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/5 border border-white/10 text-[11px] text-slate-200 font-semibold"
+            title={campusWeather.advisory || campusWeather.condition}
           >
-            <span className={`w-2 h-2 rounded-full ${statusConfig.indicatorColor}`} />
-            <span>{statusConfig.text}</span>
+            <WeatherIcon className="w-3.5 h-3.5 text-amber-300" />
+            <span className="font-mono font-bold tabular-nums">{campusWeather.temperatureC}°C</span>
+            <span className="text-slate-400">· {campusWeather.condition}</span>
           </div>
-        )}
+
+          {nextCourse && (
+            <div
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ${statusConfig.badgeBg} ${statusConfig.badgeBorder} ${statusConfig.textColor} text-xs font-bold`}
+            >
+              <span className={`w-2 h-2 rounded-full ${statusConfig.indicatorColor}`} />
+              <span>{statusConfig.text}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Body */}
       {!nextCourse ? (
-        <div className="py-6 text-center space-y-2">
+        <div className="relative z-10 py-6 text-center space-y-2">
           <p className="text-xs text-slate-300">
             Add your semester courses to track lecture walking times.
           </p>
@@ -167,8 +255,8 @@ export function CampusModeCard() {
           </button>
         </div>
       ) : (
-        <div className="pt-4 grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6 items-center">
-          <div className="md:col-span-7 space-y-2.5">
+        <div className="relative z-10 pt-4 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-center">
+          <div className="lg:col-span-6 space-y-2.5">
             <div className="text-[11px] font-semibold text-slate-400 flex flex-wrap items-center gap-1.5">
               <span>{t.campusMode.nextClass}</span>
               {nextSchedule && (
@@ -206,15 +294,42 @@ export function CampusModeCard() {
                 </div>
               )}
             </div>
+
+            {/* Live GPS Comparison Readout */}
+            <div className="text-[11px] flex flex-wrap items-center gap-1.5 pt-0.5">
+              {userCoordinates ? (
+                <span className="text-emerald-300 font-medium flex items-center gap-1.5">
+                  <LocateFixed className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>
+                    From your GPS
+                    {campusCheck?.inside ? ` (near Bldg ${campusCheck.nearestBuilding.code})` : ''} to Bldg{' '}
+                    {targetBuildingCode}:{' '}
+                    <strong className="font-mono text-white">
+                      {formatDistance(walkInfo.meters)}
+                    </strong>
+                  </span>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={requestLocationAccess}
+                  className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2 flex items-center gap-1 cursor-pointer"
+                >
+                  <LocateFixed className="w-3 h-3" />
+                  <span>Allow GPS to measure exact distance from your current location</span>
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="md:col-span-5 bg-[#0C101C]/85 rounded-2xl p-3.5 border border-white/10 grid grid-cols-2 gap-2.5 text-center">
+          {/* 3-Metric Real Comparison Grid: Starts In | Real Distance | Walk Time */}
+          <div className="lg:col-span-6 bg-[#0C101C]/85 rounded-2xl p-3 border border-white/10 grid grid-cols-3 gap-2 text-center">
             <div className="p-2.5 rounded-xl bg-white/5 border border-white/5">
               <div className="text-[10px] text-slate-400 flex items-center justify-center gap-1">
                 <Clock className="w-3 h-3 text-cyan-400" />
                 <span>{nextSchedule?.isOngoing ? 'Ends in' : t.campusMode.startsIn}</span>
               </div>
-              <div className="text-base sm:text-lg font-extrabold text-white font-mono mt-0.5 tabular-nums">
+              <div className="text-sm sm:text-base font-extrabold text-white font-mono mt-1 tabular-nums">
                 {!nowMs || !nextSchedule
                   ? '—'
                   : nextSchedule.isOngoing
@@ -225,11 +340,21 @@ export function CampusModeCard() {
 
             <div className="p-2.5 rounded-xl bg-white/5 border border-white/5">
               <div className="text-[10px] text-slate-400 flex items-center justify-center gap-1">
+                <Ruler className="w-3 h-3 text-emerald-400" />
+                <span>{walkInfo.usedRealGps ? 'Real Distance' : 'Est. Distance'}</span>
+              </div>
+              <div className="text-sm sm:text-base font-extrabold text-emerald-300 font-mono mt-1 tabular-nums">
+                {formatDistance(walkInfo.meters)}
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-white/5 border border-white/5">
+              <div className="text-[10px] text-slate-400 flex items-center justify-center gap-1">
                 <Footprints className="w-3 h-3 text-cyan-400" />
                 <span>{t.campusMode.walkingTime}</span>
               </div>
-              <div className="text-base sm:text-lg font-extrabold text-cyan-300 font-mono mt-0.5 tabular-nums">
-                ~{walkInfo.minutes}m
+              <div className="text-sm sm:text-base font-extrabold text-cyan-300 font-mono mt-1 tabular-nums">
+                ~{formatMinutesToHours(walkInfo.minutes)}
               </div>
             </div>
           </div>
@@ -237,17 +362,21 @@ export function CampusModeCard() {
       )}
 
       {/* Footer Actions */}
-      <div className="pt-4 mt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-3">
-        <a
-          href={ASU_CAMPUS_MAPS_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-cyan-300 hover:text-cyan-200 font-semibold inline-flex items-center gap-1.5"
-        >
-          <Navigation className="w-3.5 h-3.5" />
-          <span>ASU Campus on Google Maps</span>
-          <ExternalLink className="w-3 h-3" />
-        </a>
+      <div className="relative z-10 pt-4 mt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <a
+            href={targetBuilding?.mapsUrl || ASU_CAMPUS_MAPS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-cyan-300 hover:text-cyan-200 font-semibold inline-flex items-center gap-1.5"
+          >
+            <Navigation className="w-3.5 h-3.5" />
+            <span>
+              {targetBuilding ? `Bldg ${targetBuilding.code} on Google Maps` : 'ASU Campus on Google Maps'}
+            </span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
 
         <button
           onClick={() => setActiveView('campus-mode')}
@@ -257,6 +386,6 @@ export function CampusModeCard() {
           <ArrowRight className="w-3.5 h-3.5" />
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 }
